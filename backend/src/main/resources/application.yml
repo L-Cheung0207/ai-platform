@@ -1,0 +1,53 @@
+spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:}
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/ai_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    naming:
+      physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+
+app:
+  upload:
+    dir: ${UPLOAD_DIR:./upload}
+    base-url: /uploads
+  scraper:
+    ai-tools:
+      enabled: ${SCRAPER_AI_TOOLS_ENABLED:true}
+      headless: ${SCRAPER_AI_TOOLS_HEADLESS:true}
+    mcp:
+      enabled: ${SCRAPER_MCP_ENABLED:true}
+      headless: ${SCRAPER_MCP_HEADLESS:true}
+      max-pages: ${SCRAPER_MCP_MAX_PAGES:232}
+    external-skills:
+      enabled: ${SCRAPER_EXTERNAL_SKILLS_ENABLED:true}
+      headless: ${SCRAPER_EXTERNAL_SKILLS_HEADLESS:true}
+      max-pages: ${SCRAPER_EXTERNAL_SKILLS_MAX_PAGES:341}
+    aibase:
+      enabled: ${SCRAPER_AIBASE_ENABLED:true}
+      cron: ${SCRAPER_AIBASE_CRON:0 0 8 * * ?}
+      headless: ${SCRAPER_AIBASE_HEADLESS:true}
+  jwt:
+    secret: ${JWT_SECRET:your-256-bit-secret-change-in-production-must-be-long-enough}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  admin:
+    init-username: ${ADMIN_USERNAME:admin}
+    init-password: ${ADMIN_PASSWORD:admin123}
+
+server:
+  servlet:
+    context-path: /

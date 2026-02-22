@@ -1,0 +1,44 @@
+# Universal
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
+
+# Node
+node_modules/
+dist/
+build/
+*.log
+.npm
+.eslintcache
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Java / Spring Boot
+target/
+data/
+*.class
+*.jar
+*.war
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+*.iml
+*.ipr
+*.iws
+out/
+
+# Uploads (scraped logos etc.)
+upload/
+
+# Misc
+coverage/
+*.min.js
+*.min.css

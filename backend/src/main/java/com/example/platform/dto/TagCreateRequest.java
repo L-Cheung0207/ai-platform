@@ -1,0 +1,14 @@
+package com.example.platform.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public class TagCreateRequest {
+
+    @NotBlank(message = "标签名不能为空")
+    @Size(max = 100)
+    private String name;
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+}

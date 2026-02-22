@@ -1,0 +1,156 @@
+/**
+ * AI 导航风格 - 参考 ai.codefather.cn 配色与布局
+ * 与项目根目录 styles.css 保持一致
+ */
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-primary-dark: #1e40af;
+  --font-sans: "Inter", "Noto Sans SC", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+:root {
+  --bg-body: #f7f8fa;
+  --bg-card: #ffffff;
+  --border-color: #e5e7eb;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --container-max: 1280px;
+}
+
+/* Element Plus 主题对齐 */
+:root {
+  --el-color-primary: #2563eb;
+  --el-color-primary-light-3: #3b82f6;
+  --el-color-primary-light-5: #60a5fa;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  font-family: "Inter", "Noto Sans SC", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg-body);
+}
+
+/* 标签胶囊样式：浅蓝紫背景 + 深蓝紫文字 */
+.tag-chip {
+  display: inline-block;
+  padding: 6px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: #3c58b1;
+  background: #e9effc;
+  border-radius: 2px;
+  border: none;
+}
+.tag-chip--sm {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+.tag-chip--muted {
+  color: #5b6b8a;
+  background: #e2e8f2;
+}
+
+/* 管理后台弹窗：可拖动，高度不超出屏幕 */
+/* class 可能在 overlay 或 dialog 上，两种选择器都覆盖 */
+.admin-dialog .el-dialog,
+.el-dialog.admin-dialog {
+  max-height: calc(100vh - 40px) !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 根据视口高度调整 top：视口越矮，弹窗越贴近顶部，避免底部溢出 */
+@media (max-height: 600px) {
+  .admin-dialog .el-dialog,
+  .el-dialog.admin-dialog {
+    margin-top: 12px !important;
+  }
+}
+@media (min-height: 601px) and (max-height: 750px) {
+  .admin-dialog .el-dialog,
+  .el-dialog.admin-dialog {
+    margin-top: 20px !important;
+  }
+}
+@media (min-height: 751px) and (max-height: 900px) {
+  .admin-dialog .el-dialog,
+  .el-dialog.admin-dialog {
+    margin-top: 5vh !important;
+  }
+}
+/* 弹窗 body 内部滚动，适用于 Skill / Rule / 外部 Skill 等所有 admin-dialog */
+.admin-dialog .el-dialog__body,
+.el-dialog.admin-dialog .el-dialog__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.admin-dialog .el-dialog__header {
+  flex-shrink: 0;
+}
+.admin-dialog .el-dialog__footer {
+  flex-shrink: 0;
+}
+
+/* 弹窗打开时，禁止父级（管理后台主内容区）出现滚动条 */
+body:has(.el-overlay-dialog) .admin-layout main {
+  overflow: hidden;
+}
+
+/* 全局搜索框：统一样式，极淡灰边+柔影，仅按钮为蓝色，输入区无内边框 */
+.global-search {
+  display: flex;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.global-search:focus-within {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 0 1px 6px rgba(37, 99, 235, 0.08);
+}
+.global-search .el-input {
+  flex: 1;
+  min-width: 0;
+}
+.global-search .el-input .el-input__wrapper {
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+.global-search .el-input:focus-within .el-input__wrapper,
+.global-search .el-input.is-focus .el-input__wrapper {
+  box-shadow: none !important;
+}
+.global-search .el-input .el-input__inner {
+  padding-inline: 14px 12px;
+}
+.global-search .el-input .el-input__word-limit {
+  font-size: 12px;
+  color: var(--text-muted, #9ca3af);
+}
+.global-search .el-button {
+  flex-shrink: 0;
+  border-radius: 0 12px 12px 0 !important;
+  min-width: 88px;
+}
