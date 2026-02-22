@@ -44,6 +44,11 @@ body {
   background: var(--bg-body);
 }
 
+/* 前台页面（非管理后台、非登录/注册）始终预留滚动条，避免导航切换时页面宽度抖动 */
+html.scrollbar-visible body {
+  overflow-y: scroll;
+}
+
 /* 标签胶囊样式：浅蓝紫背景 + 深蓝紫文字 */
 .tag-chip {
   display: inline-block;

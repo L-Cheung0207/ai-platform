@@ -52,10 +52,11 @@ const navLinks = [
   { path: '/', label: '主页' },
   { path: '/skills', label: 'Skills', activePaths: ['/skills', '/external-skills'] },
   { path: '/rules', label: 'Rules' },
-  { path: '/articles', label: '文章' },
-  { path: '/news', label: '资讯' },
+  { path: '/articles', label: 'AI知识库' },
+  { path: '/news', label: 'AI资讯' },
   { path: '/ai-tools', label: 'AI 工具' },
   { path: '/mcp', label: 'MCP' },
+  { path: '/llm-leaderboard', label: 'LLM 排行榜' },
 ]
 
 function isActive(link) {

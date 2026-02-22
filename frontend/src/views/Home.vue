@@ -3,7 +3,7 @@
     <header class="home-hero">
       <div class="home-hero-inner">
         <h1 class="home-title"><span class="home-title-gradient">探索 AI，</span>从这里开始</h1>
-        <p class="home-subtitle">分享 Skill、Rule、学习文章与资讯，打造内部 AI 资源平台</p>
+        <p class="home-subtitle">分享 Skill、Rule、AI知识库与最新的AI资讯</p>
       </div>
     </header>
 
@@ -47,7 +47,7 @@
             <div class="home-section-header">
               <h2 class="home-section-title">
                 <Icons name="book" :size="20" class="text-primary" />
-                最新文章
+                最新知识
               </h2>
               <router-link to="/articles" class="home-more">更多</router-link>
             </div>
@@ -59,8 +59,25 @@
           </section>
         </div>
 
-        <aside v-if="latestNews?.length" class="home-sidebar">
-          <section class="home-section home-section-news home-section-anim">
+        <aside v-if="latestNews?.length || latestLlmLeaderboard?.length" class="home-sidebar">
+          <section v-if="latestLlmLeaderboard?.length" class="home-section home-section-news home-section-anim">
+            <div class="home-section-header">
+              <h2 class="home-section-title">
+                <Icons name="sparkle" :size="20" class="text-primary" />
+                最新编程模型排行榜
+              </h2>
+              <router-link to="/llm-leaderboard" class="home-more">更多</router-link>
+            </div>
+            <ul class="home-news-list">
+              <li v-for="(m, i) in latestLlmLeaderboard" :key="m.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
+                <router-link to="/llm-leaderboard" class="home-news-link">
+                  <span class="home-news-num" :class="i < 3 ? 'home-news-num-hot' : 'home-news-num-normal'">{{ i + 1 }}</span>
+                  <span class="home-news-title">{{ m.rankBadge }}{{ m.modelName }}</span>
+                </router-link>
+              </li>
+            </ul>
+          </section>
+          <section v-if="latestNews?.length" class="home-section home-section-news home-section-anim">
             <div class="home-section-header">
               <h2 class="home-section-title">
                 <Icons name="sparkle" :size="20" class="text-primary" />
@@ -94,6 +111,7 @@ import api from '../services/api'
 const latestAiTools = ref([])
 const latestArticles = ref([])
 const latestNews = ref([])
+const latestLlmLeaderboard = ref([])
 const loading = ref(true)
 const error = ref('')
 
@@ -103,6 +121,7 @@ onMounted(async () => {
     latestAiTools.value = data.latestAiTools || []
     latestArticles.value = data.latestArticles || []
     latestNews.value = (data.latestNews || []).slice(0, 10)
+    latestLlmLeaderboard.value = data.latestLlmLeaderboard || []
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
@@ -210,6 +229,9 @@ onMounted(async () => {
   width: 320px;
   position: sticky;
   top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 @media (max-width: 1023px) {

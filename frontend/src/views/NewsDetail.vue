@@ -16,18 +16,27 @@
 
         <!-- 相关推荐 -->
         <aside v-if="related.length > 0" class="news-related">
-          <h3 class="news-related-title">相关推荐</h3>
-          <ul class="news-related-list">
-            <li v-for="(r, i) in related" :key="r.id">
-              <router-link
-                :to="'/news/' + r.id"
-                class="news-related-link"
-                :style="{ animationDelay: `${i * 50}ms` }"
-              >
-                {{ r.title }}
-              </router-link>
-            </li>
-          </ul>
+          <div class="news-related-header">
+            <span class="news-related-label">更多阅读</span>
+            <h3 class="news-related-title">相关推荐</h3>
+          </div>
+          <div class="news-related-grid">
+            <router-link
+              v-for="(r, i) in related"
+              :key="r.id"
+              :to="'/news/' + r.id"
+              class="news-related-card"
+              :style="{ animationDelay: `${i * 60}ms` }"
+            >
+              <span class="news-related-card-index">{{ String(i + 1).padStart(2, '0') }}</span>
+              <div class="news-related-card-body">
+                <h4 class="news-related-card-title">{{ r.title }}</h4>
+                <p v-if="r.publishDate" class="news-related-card-meta">{{ r.publishDate }}</p>
+                <p v-else-if="(r.summary || r.sourceName)" class="news-related-card-desc">{{ (r.summary || r.sourceName || '').trim().slice(0, 72) }}{{ (r.summary || r.sourceName || '').trim().length > 72 ? '…' : '' }}</p>
+              </div>
+              <span class="news-related-card-arrow" aria-hidden="true">→</span>
+            </router-link>
+          </div>
         </aside>
       </template>
 
@@ -145,49 +154,127 @@ onMounted(async () => {
 
 /* 相关推荐 */
 .news-related {
-  margin-top: 3rem;
-  padding-top: 2rem;
+  margin-top: 3.5rem;
+  padding-top: 2.5rem;
   border-top: 1px solid #e2e8f0;
   animation: fade-up 0.5s ease-out 0.15s both;
 }
 
-.news-related-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 1rem;
+.news-related-header {
+  margin-bottom: 1.5rem;
 }
 
-.news-related-list {
-  list-style: none;
-  padding: 0;
+.news-related-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 0.35rem;
+}
+
+.news-related-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
   margin: 0;
 }
 
-.news-related-link {
-  display: block;
-  padding: 0.65rem 0;
-  font-size: 0.9375rem;
-  color: #475569;
-  border-radius: 6px;
-  transition: color 0.2s, background 0.2s;
-  animation: fade-up 0.4s ease-out both;
+.news-related-grid {
+  display: grid;
+  gap: 0.75rem;
 }
 
-.news-related-link:hover {
+.news-related-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease;
+  animation: fade-up 0.4s ease-out both;
+  cursor: pointer;
+}
+
+.news-related-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+}
+
+.news-related-card:focus-visible {
+  outline: 2px solid var(--color-primary, #2563eb);
+  outline-offset: 2px;
+}
+
+.news-related-card-index {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.news-related-card:hover .news-related-card-index {
   color: var(--color-primary, #2563eb);
-  background: rgba(37, 99, 235, 0.04);
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
-  margin-left: -0.5rem;
-  margin-right: -0.5rem;
+}
+
+.news-related-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.news-related-card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.4;
+  margin: 0 0 0.25rem 0;
+  transition: color 0.2s ease;
+}
+
+.news-related-card:hover .news-related-card-title {
+  color: var(--color-primary, #2563eb);
+}
+
+.news-related-card-meta,
+.news-related-card-desc {
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.news-related-card-arrow {
+  flex-shrink: 0;
+  font-size: 1rem;
+  color: #cbd5e1;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.news-related-card:hover .news-related-card-arrow {
+  color: var(--color-primary, #2563eb);
+  transform: translateX(3px);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .news-article,
   .news-related,
-  .news-related-link {
+  .news-related-card {
     animation: none;
+  }
+  .news-related-card:hover {
+    transform: none;
+  }
+  .news-related-card:hover .news-related-card-arrow {
+    transform: none;
   }
 }
 </style>

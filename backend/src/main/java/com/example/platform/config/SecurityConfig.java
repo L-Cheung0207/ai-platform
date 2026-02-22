@@ -30,7 +30,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
-                        // 公开：首页、分类、标签、Skill/Rule/ExternalSkill/文章/资讯 列表与详情
+                        // 公开：首页、分类、标签、Skill/Rule/ExternalSkill/AI知识库/资讯 列表与详情
                         .requestMatchers(HttpMethod.GET, "/api/home").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories", "/api/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tags", "/api/tags/**").permitAll()
@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/news", "/api/news/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ai-tools", "/api/ai-tools/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/mcp", "/api/mcp/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/llm-leaderboard", "/api/llm-leaderboard/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         // 认证：登录、注册
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()

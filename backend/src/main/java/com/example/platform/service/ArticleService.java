@@ -3,6 +3,7 @@ package com.example.platform.service;
 import com.example.platform.config.ResourceNotFoundException;
 import com.example.platform.dto.ArticleWriteRequest;
 import com.example.platform.entity.LearningArticle;
+import com.example.platform.entity.LearningArticle.ContentType;
 import com.example.platform.entity.LearningArticle.Status;
 import com.example.platform.entity.User;
 import com.example.platform.repository.LearningArticleRepository;
@@ -47,16 +48,16 @@ public class ArticleService {
 
     @Transactional(readOnly = true)
     public LearningArticle getPublishedById(Long id) {
-        LearningArticle a = articleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("文章不存在"));
+        LearningArticle a = articleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("该知识不存在"));
         if (a.getStatus() != Status.PUBLISHED) {
-            throw new ResourceNotFoundException("文章不存在或未发布");
+            throw new ResourceNotFoundException("该知识不存在或未发布");
         }
         return a;
     }
 
     @Transactional(readOnly = true)
     public LearningArticle getById(Long id) {
-        return articleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("文章不存在"));
+        return articleRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("该知识不存在"));
     }
 
     @Transactional
@@ -64,8 +65,8 @@ public class ArticleService {
         User author = userRepository.findById(authorUserId).orElseThrow(() -> new ResourceNotFoundException("用户不存在"));
         LearningArticle a = new LearningArticle();
         a.setTitle(req.getTitle());
-        a.setSummary(req.getSummary());
         a.setContent(req.getContent());
+        a.setContentType(parseContentType(req.getContentType()));
         a.setAuthor(author);
         a.setStatus(parseStatus(req.getStatus()));
         return articleRepository.save(a);
@@ -75,8 +76,8 @@ public class ArticleService {
     public LearningArticle update(Long id, ArticleWriteRequest req) {
         LearningArticle a = getById(id);
         a.setTitle(req.getTitle());
-        a.setSummary(req.getSummary());
         a.setContent(req.getContent());
+        a.setContentType(parseContentType(req.getContentType()));
         a.setStatus(parseStatus(req.getStatus()));
         return articleRepository.save(a);
     }
@@ -93,6 +94,15 @@ public class ArticleService {
             return Status.valueOf(s.toUpperCase());
         } catch (IllegalArgumentException e) {
             return Status.DRAFT;
+        }
+    }
+
+    private static ContentType parseContentType(String s) {
+        if (s == null || s.isBlank()) return ContentType.RICH_TEXT;
+        try {
+            return ContentType.valueOf(s.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ContentType.RICH_TEXT;
         }
     }
 }

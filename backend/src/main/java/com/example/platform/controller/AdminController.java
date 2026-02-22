@@ -22,6 +22,7 @@ import com.example.platform.service.McpScraperService;
 import com.example.platform.service.McpServerService;
 import com.example.platform.service.ExternalSkillScraperService;
 import com.example.platform.service.NewsService;
+import com.example.platform.service.OpenLmArenaScraperService;
 import com.example.platform.service.ArticleService;
 import com.example.platform.service.ExternalSkillService;
 import com.example.platform.service.RuleService;
@@ -52,8 +53,9 @@ public class AdminController {
     private final McpServerService mcpServerService;
     private final ExternalSkillScraperService externalSkillScraperService;
     private final NewsService newsService;
+    private final OpenLmArenaScraperService openLmArenaScraperService;
 
-    public AdminController(SkillService skillService, RuleService ruleService, ExternalSkillService externalSkillService, ArticleService articleService, AibaseNewsScraperService aibaseNewsScraperService, AiToolScraperService aiToolScraperService, AiToolService aiToolService, McpScraperService mcpScraperService, McpServerService mcpServerService, ExternalSkillScraperService externalSkillScraperService, NewsService newsService) {
+    public AdminController(SkillService skillService, RuleService ruleService, ExternalSkillService externalSkillService, ArticleService articleService, AibaseNewsScraperService aibaseNewsScraperService, AiToolScraperService aiToolScraperService, AiToolService aiToolService, McpScraperService mcpScraperService, McpServerService mcpServerService, ExternalSkillScraperService externalSkillScraperService, NewsService newsService, OpenLmArenaScraperService openLmArenaScraperService) {
         this.skillService = skillService;
         this.ruleService = ruleService;
         this.externalSkillService = externalSkillService;
@@ -65,6 +67,7 @@ public class AdminController {
         this.mcpServerService = mcpServerService;
         this.externalSkillScraperService = externalSkillScraperService;
         this.newsService = newsService;
+        this.openLmArenaScraperService = openLmArenaScraperService;
     }
 
     @GetMapping("/news")
@@ -221,6 +224,23 @@ public class AdminController {
         ));
     }
 
+    @PostMapping("/scrape/llm-leaderboard")
+    public ApiResponse<ScrapeResult> scrapeLlmLeaderboard() {
+        openLmArenaScraperService.doScrapeAsync();
+        return ApiResponse.ok(new ScrapeResult("started", "LLM 排行榜爬取任务已在后台启动，数据来源 OpenLM Chatbot Arena"));
+    }
+
+    @GetMapping("/scrape-status/llm-leaderboard")
+    public ApiResponse<ScrapeStatusResponse> getLlmLeaderboardScrapeStatus() {
+        var status = openLmArenaScraperService.getLastStatus();
+        return ApiResponse.ok(new ScrapeStatusResponse(
+                status.status(),
+                status.added(),
+                status.error(),
+                status.finishedAt() != null ? status.finishedAt().toString() : null
+        ));
+    }
+
     @GetMapping("/articles")
     public ApiResponse<PageResult<ArticleDto>> listArticles(
             @RequestParam(defaultValue = "1") int page,
@@ -303,5 +323,12 @@ public class AdminController {
     public ApiResponse<Void> deleteExternalSkill(@PathVariable Long id) {
         externalSkillService.delete(id);
         return ApiResponse.ok(null);
+    }
+
+    /** 批量清理所有外部 Skill 的 content 中的「▼…复制代码」块（与爬虫同一正则），返回被更新的条数。 */
+    @PostMapping("/external-skills/clean-content")
+    public ApiResponse<Integer> cleanExternalSkillsContent() {
+        int updated = externalSkillService.cleanAllContentsCopyCodeBlock();
+        return ApiResponse.ok(updated);
     }
 }

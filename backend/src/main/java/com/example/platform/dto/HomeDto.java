@@ -13,6 +13,7 @@ public class HomeDto {
     private List<ArticleDto> latestArticles;
     private List<News> latestNews;
     private List<Map<String, Object>> latestAiTools;
+    private List<LlmLeaderboardEntryDto> latestLlmLeaderboard;
 
     public List<SkillDto> getLatestSkills() { return latestSkills; }
     public void setLatestSkills(List<SkillDto> latestSkills) { this.latestSkills = latestSkills; }
@@ -26,4 +27,6 @@ public class HomeDto {
     public void setLatestNews(List<News> latestNews) { this.latestNews = latestNews; }
     public List<Map<String, Object>> getLatestAiTools() { return latestAiTools; }
     public void setLatestAiTools(List<Map<String, Object>> latestAiTools) { this.latestAiTools = latestAiTools; }
+    public List<LlmLeaderboardEntryDto> getLatestLlmLeaderboard() { return latestLlmLeaderboard; }
+    public void setLatestLlmLeaderboard(List<LlmLeaderboardEntryDto> latestLlmLeaderboard) { this.latestLlmLeaderboard = latestLlmLeaderboard; }
 }

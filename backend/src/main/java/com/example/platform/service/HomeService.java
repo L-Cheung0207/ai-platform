@@ -19,17 +19,19 @@ public class HomeService {
     private final LearningArticleRepository articleRepository;
     private final NewsRepository newsRepository;
     private final AiToolService aiToolService;
+    private final LlmLeaderboardService llmLeaderboardService;
 
     public HomeService(SkillRepository skillRepository, RuleRepository ruleRepository,
                        ExternalSkillRepository externalSkillRepository,
                        LearningArticleRepository articleRepository, NewsRepository newsRepository,
-                       AiToolService aiToolService) {
+                       AiToolService aiToolService, LlmLeaderboardService llmLeaderboardService) {
         this.skillRepository = skillRepository;
         this.ruleRepository = ruleRepository;
         this.externalSkillRepository = externalSkillRepository;
         this.articleRepository = articleRepository;
         this.newsRepository = newsRepository;
         this.aiToolService = aiToolService;
+        this.llmLeaderboardService = llmLeaderboardService;
     }
 
     @Transactional(readOnly = true)
@@ -45,6 +47,8 @@ public class HomeService {
         dto.setLatestArticles(articles.stream().map(ArticleDto::fromEntity).collect(Collectors.toList()));
         dto.setLatestNews(newsRepository.findTop10ByOrderByPublishDateDescCreatedAtDesc());
         dto.setLatestAiTools(aiToolService.getLatest(10));
+        var leaderboardPage = llmLeaderboardService.list(null, 1, 10, "coding", "desc");
+        dto.setLatestLlmLeaderboard(leaderboardPage.getContent());
         return dto;
     }
 }

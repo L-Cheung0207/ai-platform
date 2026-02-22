@@ -38,7 +38,7 @@ public class DataInitializer implements ApplicationRunner {
         if (categoryRepository.count() > 0) return;
         String[][] defaults = {
             { "Skill/Rule", "SKILL_RULE", "10" },
-            { "学习文章", "ARTICLE", "20" },
+            { "AI知识库", "ARTICLE", "20" },
         };
         for (int i = 0; i < defaults.length; i++) {
             Category c = new Category();

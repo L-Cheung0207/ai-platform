@@ -18,12 +18,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class ExternalSkillService {
 
     private static final int KEYWORD_MAX_LENGTH = 200;
+
+    /** 删除「▼ + 换行 + 任意一行 + 换行 + 复制代码」（严格换行） */
+    private static final Pattern COPY_CODE_BLOCK = Pattern.compile(
+            "▼[\\r\\n\\u2028\\u2029]+[^\\r\\n\\u2028\\u2029]*[\\r\\n\\u2028\\u2029]+复制代码");
+    /** 放宽：▼ 后任意空白再任意内容直到 复制代码（DOTALL），兼容异常换行/空格 */
+    private static final Pattern COPY_CODE_BLOCK_PERMISSIVE = Pattern.compile(
+            "▼[\\s\\r\\n\\u2028\\u2029]++.+?复制代码", Pattern.DOTALL);
+
+    private static final String COPY_CODE_MARKER = "复制代码";
 
     private final ExternalSkillRepository externalSkillRepository;
     private final TagRepository tagRepository;
@@ -126,6 +136,53 @@ public class ExternalSkillService {
 
     public boolean existsByName(String name) {
         return name != null && !name.isBlank() && externalSkillRepository.existsByNameIgnoreCase(name.trim());
+    }
+
+    /** 三角形符号常见 Unicode：▼ U+25BC, ▾ U+25BE, ▾ U+25BD，兜底时任一匹配 */
+    private static final String TRIANGLE_CHARS = "\u25BC\u25BE\u25BD";
+
+    /** 从 content 中移除「▼…复制代码」整段；先正则，再按字符串兜底（兼容异常字符/换行）。 */
+    public static String cleanCopyCodeBlock(String content) {
+        if (content == null || content.isEmpty()) return content;
+        String s = COPY_CODE_BLOCK.matcher(content).replaceAll("");
+        if (s.equals(content)) s = COPY_CODE_BLOCK_PERMISSIVE.matcher(content).replaceAll("");
+        // 兜底：先找「复制代码」，再向前找三角形；中间不超过 200 字符则整段删除（兼容不同 ▼ 字形）
+        while (s.contains(COPY_CODE_MARKER)) {
+            int endIdx = s.indexOf(COPY_CODE_MARKER);
+            if (endIdx == -1) break;
+            int end = endIdx + COPY_CODE_MARKER.length();
+            int searchFrom = Math.max(0, endIdx - 220);
+            int start = -1;
+            for (int i = endIdx - 1; i >= searchFrom; i--) {
+                if (TRIANGLE_CHARS.indexOf(s.charAt(i)) >= 0) {
+                    start = i;
+                    break;
+                }
+            }
+            if (start == -1) break;
+            String between = s.substring(start, end);
+            if (between.length() > 250 || between.substring(1, between.length() - COPY_CODE_MARKER.length()).contains(COPY_CODE_MARKER)) break;
+            s = s.substring(0, start) + s.substring(end);
+        }
+        return s;
+    }
+
+    /** 批量清理所有 external_skills 的 content 中的「▼…复制代码」，返回被更新的条数。 */
+    @Transactional
+    public int cleanAllContentsCopyCodeBlock() {
+        List<ExternalSkill> all = externalSkillRepository.findAll();
+        int updated = 0;
+        for (ExternalSkill e : all) {
+            String raw = e.getContent();
+            if (raw == null || (!raw.contains("▼") && !raw.contains("复制代码"))) continue;
+            String cleaned = cleanCopyCodeBlock(raw);
+            if (!raw.equals(cleaned)) {
+                e.setContent(cleaned);
+                externalSkillRepository.save(e);
+                updated++;
+            }
+        }
+        return updated;
     }
 
     @Transactional

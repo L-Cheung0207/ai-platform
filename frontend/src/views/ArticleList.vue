@@ -2,7 +2,7 @@
   <div>
     <PageHero
       variant="rose"
-      title="AI 学习文章"
+      title="AI 知识库"
       subtitle="探索 AI 相关知识与实践"
     />
 
@@ -11,7 +11,6 @@
         <router-link v-for="a in items" :key="a.id" :to="'/articles/' + a.id">
           <el-card shadow="hover" class="transition-shadow">
             <h3 class="font-medium text-gray-800">{{ a.title }}</h3>
-            <p class="text-sm text-gray-500 mt-1 line-clamp-2">{{ a.summary || '暂无摘要' }}</p>
           </el-card>
         </router-link>
       </div>
@@ -29,7 +28,7 @@
 
       <p v-if="loading" class="text-center text-gray-500 py-8">加载中…</p>
       <el-alert v-if="error" type="error" :title="error" show-icon class="mt-4" />
-      <p v-if="!loading && !error && items.length === 0" class="text-center text-gray-500 py-8">暂无文章</p>
+      <p v-if="!loading && !error && items.length === 0" class="text-center text-gray-500 py-8">暂无知识</p>
     </div>
   </div>
 </template>

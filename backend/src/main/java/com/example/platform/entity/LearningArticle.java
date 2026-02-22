@@ -15,9 +15,6 @@ public class LearningArticle {
     private String title;
 
     @Column(columnDefinition = "TEXT")
-    private String summary;
-
-    @Column(columnDefinition = "TEXT")
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -28,6 +25,10 @@ public class LearningArticle {
     @Column(nullable = false, length = 20)
     private Status status = Status.DRAFT;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "content_type", nullable = false, length = 20)
+    private ContentType contentType = ContentType.RICH_TEXT;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -35,6 +36,7 @@ public class LearningArticle {
     private Instant updatedAt = Instant.now();
 
     public enum Status { DRAFT, PUBLISHED }
+    public enum ContentType { RICH_TEXT, MARKDOWN }
 
     @PreUpdate
     public void preUpdate() { this.updatedAt = Instant.now(); }
@@ -43,14 +45,14 @@ public class LearningArticle {
     public void setId(Long id) { this.id = id; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
-    public String getSummary() { return summary; }
-    public void setSummary(String summary) { this.summary = summary; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
     public User getAuthor() { return author; }
     public void setAuthor(User author) { this.author = author; }
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
+    public ContentType getContentType() { return contentType; }
+    public void setContentType(ContentType contentType) { this.contentType = contentType; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

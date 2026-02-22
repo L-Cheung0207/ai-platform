@@ -254,7 +254,9 @@ public class ExternalSkillScraperService {
         if (html == null || html.isBlank()) return null;
         try {
             String md = FlexmarkHtmlConverter.builder().build().convert(html).trim();
-            return fixMarkdownTableLeading(md);
+            md = fixMarkdownTableLeading(md);
+            md = ExternalSkillService.cleanCopyCodeBlock(md);
+            return md;
         } catch (Exception e) {
             log.debug("HTML to Markdown failed, using plain text: {}", e.getMessage());
             return Jsoup.parse(html).text().trim();

@@ -37,6 +37,9 @@ app:
       enabled: ${SCRAPER_EXTERNAL_SKILLS_ENABLED:true}
       headless: ${SCRAPER_EXTERNAL_SKILLS_HEADLESS:true}
       max-pages: ${SCRAPER_EXTERNAL_SKILLS_MAX_PAGES:341}
+    llm-leaderboard:
+      enabled: ${SCRAPER_LLM_LEADERBOARD_ENABLED:true}
+      headless: ${SCRAPER_LLM_LEADERBOARD_HEADLESS:true}
     aibase:
       enabled: ${SCRAPER_AIBASE_ENABLED:true}
       cron: ${SCRAPER_AIBASE_CRON:0 0 8 * * ?}
