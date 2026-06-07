@@ -1,6 +1,9 @@
 package com.example.platform.controller;
 
 import com.example.platform.dto.ApiResponse;
+import com.example.platform.dto.AdminUserCreateRequest;
+import com.example.platform.dto.AdminUserDto;
+import com.example.platform.dto.AdminUserUpdateRequest;
 import com.example.platform.dto.ArticleDto;
 import com.example.platform.dto.CreateRuleRequest;
 import com.example.platform.dto.CreateSkillRequest;
@@ -8,7 +11,20 @@ import com.example.platform.dto.ExternalSkillDto;
 import com.example.platform.dto.ExternalSkillWriteRequest;
 import com.example.platform.dto.PageResult;
 import com.example.platform.dto.RuleDto;
+import com.example.platform.dto.SkillAssetMetricsDto;
 import com.example.platform.dto.SkillDto;
+import com.example.platform.dto.SkillFeedbackDto;
+import com.example.platform.dto.SkillFeedbackStatusRequest;
+import com.example.platform.dto.SkillMonthlyReportDto;
+import com.example.platform.dto.SkillOperationReportDto;
+import com.example.platform.dto.SkillPackageImportResultDto;
+import com.example.platform.dto.SkillOperationsDto;
+import com.example.platform.dto.SkillQuarterlyReportDto;
+import com.example.platform.dto.SkillReviewDto;
+import com.example.platform.dto.SkillReviewRequest;
+import com.example.platform.dto.SkillTemplateValidationDto;
+import com.example.platform.dto.UserSkillGovernanceRoleRequest;
+import com.example.platform.dto.UserRoleRequest;
 import com.example.platform.dto.AiToolDto;
 import com.example.platform.dto.McpServerDto;
 import com.example.platform.entity.AiTool;
@@ -26,13 +42,18 @@ import com.example.platform.service.OpenLmArenaScraperService;
 import com.example.platform.service.ArticleService;
 import com.example.platform.service.ExternalSkillService;
 import com.example.platform.service.RuleService;
+import com.example.platform.service.SkillGovernanceService;
+import com.example.platform.service.SkillPackageImportService;
 import com.example.platform.service.SkillService;
+import com.example.platform.service.UserAdminService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -54,8 +75,11 @@ public class AdminController {
     private final ExternalSkillScraperService externalSkillScraperService;
     private final NewsService newsService;
     private final OpenLmArenaScraperService openLmArenaScraperService;
+    private final SkillGovernanceService skillGovernanceService;
+    private final SkillPackageImportService skillPackageImportService;
+    private final UserAdminService userAdminService;
 
-    public AdminController(SkillService skillService, RuleService ruleService, ExternalSkillService externalSkillService, ArticleService articleService, AibaseNewsScraperService aibaseNewsScraperService, AiToolScraperService aiToolScraperService, AiToolService aiToolService, McpScraperService mcpScraperService, McpServerService mcpServerService, ExternalSkillScraperService externalSkillScraperService, NewsService newsService, OpenLmArenaScraperService openLmArenaScraperService) {
+    public AdminController(SkillService skillService, RuleService ruleService, ExternalSkillService externalSkillService, ArticleService articleService, AibaseNewsScraperService aibaseNewsScraperService, AiToolScraperService aiToolScraperService, AiToolService aiToolService, McpScraperService mcpScraperService, McpServerService mcpServerService, ExternalSkillScraperService externalSkillScraperService, NewsService newsService, OpenLmArenaScraperService openLmArenaScraperService, SkillGovernanceService skillGovernanceService, SkillPackageImportService skillPackageImportService, UserAdminService userAdminService) {
         this.skillService = skillService;
         this.ruleService = ruleService;
         this.externalSkillService = externalSkillService;
@@ -68,6 +92,9 @@ public class AdminController {
         this.externalSkillScraperService = externalSkillScraperService;
         this.newsService = newsService;
         this.openLmArenaScraperService = openLmArenaScraperService;
+        this.skillGovernanceService = skillGovernanceService;
+        this.skillPackageImportService = skillPackageImportService;
+        this.userAdminService = userAdminService;
     }
 
     @GetMapping("/news")
@@ -168,6 +195,47 @@ public class AdminController {
     public record ScrapeResult(String status, String message) {}
     public record ScrapeStatusResponse(String status, Integer added, String error, String finishedAt) {}
 
+    @GetMapping("/users")
+    public ApiResponse<PageResult<AdminUserDto>> listUsers(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<AdminUserDto> p = userAdminService.listUsers(page, size);
+        return ApiResponse.ok(new PageResult<>(p.getContent(), p.getTotalElements()));
+    }
+
+    @PostMapping("/users")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<AdminUserDto> createUser(@Valid @RequestBody AdminUserCreateRequest req) {
+        return ApiResponse.ok(userAdminService.createUser(req));
+    }
+
+    @PutMapping("/users/{id}")
+    public ApiResponse<AdminUserDto> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminUserUpdateRequest req) {
+        return ApiResponse.ok(userAdminService.updateUser(id, req));
+    }
+
+    @PutMapping("/users/{id}/skill-governance-role")
+    public ApiResponse<AdminUserDto> updateUserSkillGovernanceRole(
+            @PathVariable Long id,
+            @Valid @RequestBody UserSkillGovernanceRoleRequest req) {
+        return ApiResponse.ok(userAdminService.updateSkillGovernanceRole(id, req));
+    }
+
+    @PutMapping("/users/{id}/role")
+    public ApiResponse<AdminUserDto> updateUserRole(
+            @PathVariable Long id,
+            @Valid @RequestBody UserRoleRequest req) {
+        return ApiResponse.ok(userAdminService.updateRole(id, req));
+    }
+
+    @DeleteMapping("/users/{id}")
+    public ApiResponse<Void> deleteUser(@PathVariable Long id, Authentication auth) {
+        userAdminService.deleteUser(id, (Long) auth.getPrincipal());
+        return ApiResponse.ok(null);
+    }
+
     @PostMapping("/skills")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<SkillDto> createSkill(@Valid @RequestBody CreateSkillRequest req, Authentication auth) {
@@ -178,9 +246,58 @@ public class AdminController {
     @GetMapping("/skills")
     public ApiResponse<PageResult<SkillDto>> listSkills(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String assetLevel,
+            @RequestParam(required = false) String lifecycleStatus,
+            @RequestParam(required = false) String skillCategory,
+            @RequestParam(required = false) String buildPriority,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<SkillDto> p = skillService.listAllForAdmin(keyword, page, size);
+        Page<SkillDto> p = skillService.listAllForAdmin(keyword, assetLevel, lifecycleStatus, skillCategory, buildPriority, page, size);
+        return ApiResponse.ok(new PageResult<>(p.getContent(), p.getTotalElements()));
+    }
+
+    @PostMapping(value = "/skills/import-package", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<SkillPackageImportResultDto> importSkillPackage(
+            @RequestParam("file") MultipartFile file,
+            Authentication auth) {
+        Long adminId = (Long) auth.getPrincipal();
+        return ApiResponse.ok(skillPackageImportService.importPackage(file, adminId));
+    }
+
+    @GetMapping("/skill-metrics")
+    public ApiResponse<SkillAssetMetricsDto> skillMetrics() {
+        return ApiResponse.ok(skillGovernanceService.metrics());
+    }
+
+    @GetMapping("/skill-operations")
+    public ApiResponse<SkillOperationsDto> skillOperations() {
+        return ApiResponse.ok(skillGovernanceService.operationsReport());
+    }
+
+    @GetMapping("/skill-operations/monthly-report")
+    public ApiResponse<SkillMonthlyReportDto> skillMonthlyReport(@RequestParam(required = false) String month) {
+        return ApiResponse.ok(skillGovernanceService.monthlyReport(month));
+    }
+
+    @GetMapping("/skill-operations/quarterly-report")
+    public ApiResponse<SkillQuarterlyReportDto> skillQuarterlyReport(@RequestParam(required = false) String quarter) {
+        return ApiResponse.ok(skillGovernanceService.quarterlyReport(quarter));
+    }
+
+    @GetMapping("/skill-operations/monthly-reports")
+    public ApiResponse<PageResult<SkillOperationReportDto>> listSkillMonthlyReports(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "6") int size) {
+        Page<SkillOperationReportDto> p = skillGovernanceService.listMonthlyReports(page, size);
+        return ApiResponse.ok(new PageResult<>(p.getContent(), p.getTotalElements()));
+    }
+
+    @GetMapping("/skill-feedback")
+    public ApiResponse<PageResult<SkillFeedbackDto>> listAllSkillFeedback(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<SkillFeedbackDto> p = skillGovernanceService.listFeedback(null, status, page, size);
         return ApiResponse.ok(new PageResult<>(p.getContent(), p.getTotalElements()));
     }
 
@@ -260,6 +377,48 @@ public class AdminController {
     @PutMapping("/skills/{id}")
     public ApiResponse<SkillDto> updateSkill(@PathVariable Long id, @Valid @RequestBody CreateSkillRequest req) {
         return ApiResponse.ok(skillService.adminUpdate(id, req));
+    }
+
+    @PostMapping("/skills/{id}/validate-template")
+    public ApiResponse<SkillTemplateValidationDto> validateSkillTemplate(@PathVariable Long id) {
+        return ApiResponse.ok(skillGovernanceService.validateTemplate(id));
+    }
+
+    @GetMapping("/skills/{id}/reviews")
+    public ApiResponse<PageResult<SkillReviewDto>> listSkillReviews(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<SkillReviewDto> p = skillGovernanceService.listReviews(id, page, size);
+        return ApiResponse.ok(new PageResult<>(p.getContent(), p.getTotalElements()));
+    }
+
+    @PostMapping("/skills/{id}/reviews")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<SkillReviewDto> createSkillReview(
+            @PathVariable Long id,
+            @Valid @RequestBody SkillReviewRequest req,
+            Authentication auth) {
+        Long reviewerUserId = (Long) auth.getPrincipal();
+        return ApiResponse.ok(skillGovernanceService.createReview(id, req, reviewerUserId));
+    }
+
+    @GetMapping("/skills/{id}/feedback")
+    public ApiResponse<PageResult<SkillFeedbackDto>> listSkillFeedback(
+            @PathVariable Long id,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Page<SkillFeedbackDto> p = skillGovernanceService.listFeedback(id, status, page, size);
+        return ApiResponse.ok(new PageResult<>(p.getContent(), p.getTotalElements()));
+    }
+
+    @PutMapping("/skills/{id}/feedback/{feedbackId}/status")
+    public ApiResponse<SkillFeedbackDto> updateSkillFeedbackStatus(
+            @PathVariable Long id,
+            @PathVariable Long feedbackId,
+            @Valid @RequestBody SkillFeedbackStatusRequest req) {
+        return ApiResponse.ok(skillGovernanceService.updateFeedbackStatus(id, feedbackId, req));
     }
 
     @PostMapping("/skills/{id}/hide")

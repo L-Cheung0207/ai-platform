@@ -1,25 +1,43 @@
 <template>
-  <div>
+  <div class="skill-list-page">
     <PageHero
       variant="green"
-      title="发现让 AI 更好用的 Skills"
-      subtitle="内部与外部 Skill 一览，释放 AI 执行潜力"
+      title="AI Skill 资产库"
+      subtitle="按层级、状态和场景沉淀可复用的组织级 AI 能力"
     >
-      <div class="global-search">
-        <el-input
-          v-model="keyword"
-          placeholder="搜索 Skill（最多 200 字）"
-          maxlength="200"
-          show-word-limit
-          clearable
+      <div class="skills-hero-toolbar">
+        <div class="global-search skills-hero-search">
+          <el-input
+            v-model="keyword"
+            placeholder="搜索 Skill（最多 200 字）"
+            maxlength="200"
+            show-word-limit
+            clearable
+            size="large"
+            @keyup.enter="search"
+          />
+          <el-button type="primary" size="large" @click="search">搜索</el-button>
+        </div>
+        <el-button
+          type="primary"
           size="large"
-          @keyup.enter="search"
-        />
-        <el-button type="primary" size="large" @click="search">搜索</el-button>
+          :icon="Upload"
+          class="skills-upload-btn"
+          @click="openContributorWorkspace"
+        >
+          上传 Skill
+        </el-button>
       </div>
     </PageHero>
 
     <div class="max-w-[1280px] mx-auto px-6 py-8">
+      <ContributorSkillWorkspace v-model="contributorWorkspaceVisible" @changed="load" />
+      <LoginDialog
+        v-model="loginDialogVisible"
+        description="登录后可上传 Skill 包、手工登记并管理我的提交"
+        @success="onContributorLoginSuccess"
+      />
+
       <!-- 类型筛选：全部 | 内部 | 外部 -->
       <div class="mb-6 flex flex-wrap gap-2 justify-center">
         <button
@@ -34,38 +52,6 @@
         >
           {{ opt.label }}
         </button>
-      </div>
-
-      <!-- 分类标签 -->
-      <div v-if="tagList.length > 0" class="mb-8 overflow-x-auto scrollbar-thin">
-        <div class="flex flex-wrap gap-2 justify-center min-w-0">
-          <button
-            type="button"
-            :class="[
-              'px-4 py-2 rounded-full text-[14px] font-medium transition-all duration-200 whitespace-nowrap',
-              selectedTagIds.length === 0
-                ? 'bg-primary text-white'
-                : 'bg-[#f3f4f6] text-[#4b5563] hover:bg-[#e5e7eb]'
-            ]"
-            @click="clearTagFilter"
-          >
-            全部
-          </button>
-          <button
-            v-for="t in tagList"
-            :key="t.id"
-            type="button"
-            :class="[
-              'px-4 py-2 rounded-full text-[14px] font-medium transition-all duration-200 whitespace-nowrap',
-              selectedTagIds.includes(t.id)
-                ? 'bg-primary text-white'
-                : 'bg-[#f3f4f6] text-[#4b5563] hover:bg-[#e5e7eb]'
-            ]"
-            @click="toggleTag(t.id)"
-          >
-            {{ tagEmoji(t.name) }} {{ t.name }}
-          </button>
-        </div>
       </div>
 
       <!-- 网格卡片 -->
@@ -92,8 +78,17 @@
           <div class="flex flex-wrap gap-2 mb-2">
             <span v-for="t in (s.tagNames || []).slice(0, 4)" :key="t" class="tag-chip tag-chip--sm">{{ t }}</span>
             <span class="tag-chip tag-chip--sm tag-chip--muted">{{ s.type === 'internal' ? '内部' : '外部' }}</span>
+            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm tag-chip--asset">{{ assetLevelLabel(s.assetLevel) }}</span>
+            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm tag-chip--status">{{ lifecycleLabel(s.lifecycleStatus) }}</span>
+            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm">{{ skillCategoryLabel(s.skillCategory) }}</span>
+            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm tag-chip--priority">{{ buildPriorityLabel(s.buildPriority) }}</span>
+            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm tag-chip--validation">{{ validationStatusLabel(s.templateValidationStatus) }}</span>
           </div>
           <p class="text-[14px] text-[#6b7280] leading-relaxed line-clamp-2">{{ s.description || '暂无描述' }}</p>
+          <div v-if="s.type === 'internal'" class="mt-4 flex items-center justify-between text-[12px] text-[#9ca3af]">
+            <span>{{ s.teamName || '未分配团队' }}</span>
+            <span>{{ s.nextReviewAt ? '复审 ' + s.nextReviewAt : riskLabel(s.riskLevel) }}</span>
+          </div>
         </router-link>
       </div>
 
@@ -115,12 +110,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
+import { Upload } from '@element-plus/icons-vue'
 import PageHero from '../components/PageHero.vue'
+import LoginDialog from '../components/auth/LoginDialog.vue'
+import ContributorSkillWorkspace from '../components/skills/ContributorSkillWorkspace.vue'
 import api from '../services/api'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
+const auth = useAuthStore()
 const items = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -129,13 +129,46 @@ const keyword = ref(route.query.keyword || '')
 const typeFilter = ref('all') // 'all' | 'internal' | 'external'
 const loading = ref(false)
 const error = ref('')
-const tagList = ref([])
-const selectedTagIds = ref([])
+const contributorWorkspaceVisible = ref(false)
+const loginDialogVisible = shallowRef(false)
 
 const typeOptions = [
   { value: 'all', label: '全部' },
   { value: 'internal', label: '内部' },
   { value: 'external', label: '外部' },
+]
+
+const assetLevelOptions = [
+  { value: 'TEAM', label: '团队级' },
+  { value: 'COMPANY', label: '公司级' },
+]
+
+const riskOptions = [
+  { value: 'LOW', label: '低风险' },
+  { value: 'MEDIUM', label: '中风险' },
+  { value: 'HIGH', label: '高风险' },
+]
+
+const skillCategoryOptions = [
+  { value: 'REQUIREMENT_ANALYSIS', label: '需求分析' },
+  { value: 'ARCHITECTURE_DESIGN', label: '架构设计' },
+  { value: 'CODING_IMPLEMENTATION', label: '编码实现' },
+  { value: 'TESTING_VALIDATION', label: '测试验证' },
+  { value: 'CODE_REVIEW', label: '代码 Review' },
+  { value: 'OPS_TROUBLESHOOTING', label: '排障运维' },
+  { value: 'DOCUMENTATION_KNOWLEDGE', label: '文档知识' },
+]
+
+const buildPriorityOptions = [
+  { value: 'P0', label: 'P0' },
+  { value: 'P1', label: 'P1' },
+  { value: 'P2', label: 'P2' },
+]
+
+const validationOptions = [
+  { value: 'UNVALIDATED', label: '未校验' },
+  { value: 'PASSED', label: '模板通过' },
+  { value: 'FAILED', label: '模板未通过' },
 ]
 
 const displayItems = computed(() => {
@@ -146,40 +179,10 @@ const displayItems = computed(() => {
   return items.value
 })
 
-const TAG_EMOJI = {
-  效率工具: '⚡️',
-  软件开发: '💻',
-  文档处理: '📄',
-  数据与分析: '📊',
-  开发运维: '🚀',
-  商业与营销: '💼',
-  测试与安全: '🔒',
-  内容与媒体: '🎨',
-  研究: '🔬',
-  数据库: '🗄️',
-  区块链: '⛓️',
-  生活方式: '🛋',
-  协作与管理: '👥',
-  Claude官方: '🌟',
-}
-
-function tagEmoji(name) {
-  return TAG_EMOJI[name] || '🏷️'
-}
-
 function setTypeFilter(v) {
   typeFilter.value = v
   page.value = 1
   load()
-}
-
-async function loadTags() {
-  try {
-    const list = await api.get('/tags', { params: { forEntity: 'skills' } })
-    tagList.value = list || []
-  } catch {
-    tagList.value = []
-  }
 }
 
 async function load() {
@@ -189,7 +192,6 @@ async function load() {
     const type = typeFilter.value
     const params = { page: 1, size: 500 }
     if (keyword.value) params.keyword = keyword.value
-    if (selectedTagIds.value.length > 0) params.tags = selectedTagIds.value
 
     if (type === 'internal') {
       const data = await api.get('/skills', { params: { ...params, page: page.value, size: size.value } })
@@ -223,26 +225,49 @@ async function load() {
   }
 }
 
+function optionLabel(options, value, fallback = '—') {
+  return options.find((item) => item.value === value)?.label || fallback
+}
+
+function assetLevelLabel(value) {
+  return optionLabel(assetLevelOptions, value, '团队级')
+}
+
+function lifecycleLabel(value) {
+  return value === 'APPROVED' ? '已入库' : '未入库'
+}
+
+function riskLabel(value) {
+  return optionLabel(riskOptions, value, '低风险')
+}
+
+function skillCategoryLabel(value) {
+  return optionLabel(skillCategoryOptions, value, '编码实现')
+}
+
+function buildPriorityLabel(value) {
+  return optionLabel(buildPriorityOptions, value, 'P2')
+}
+
+function validationStatusLabel(value) {
+  return optionLabel(validationOptions, value, '未校验')
+}
+
 function search() {
   page.value = 1
   load()
 }
 
-function toggleTag(id) {
-  const idx = selectedTagIds.value.indexOf(id)
-  if (idx >= 0) {
-    selectedTagIds.value = selectedTagIds.value.filter((x) => x !== id)
-  } else {
-    selectedTagIds.value = [...selectedTagIds.value, id]
+function openContributorWorkspace() {
+  if (!auth.isAuthenticated) {
+    loginDialogVisible.value = true
+    return
   }
-  page.value = 1
-  load()
+  contributorWorkspaceVisible.value = true
 }
 
-function clearTagFilter() {
-  selectedTagIds.value = []
-  page.value = 1
-  load()
+function onContributorLoginSuccess() {
+  contributorWorkspaceVisible.value = true
 }
 
 watch(() => route.query.keyword, (v) => {
@@ -255,17 +280,53 @@ function onPageChange() {
 }
 
 onMounted(() => {
-  loadTags()
   load()
 })
 </script>
 
 <style scoped>
-.scrollbar-thin::-webkit-scrollbar {
-  height: 4px;
+.skill-list-page :deep(.page-hero-inner) {
+  max-width: 780px;
 }
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 4px;
+
+.skills-hero-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 0.5rem;
+}
+
+.skills-hero-search {
+  flex: 1;
+  margin: 0;
+}
+
+.skills-upload-btn {
+  --el-button-bg-color: #10b981;
+  --el-button-border-color: #10b981;
+  --el-button-hover-bg-color: #059669;
+  --el-button-hover-border-color: #059669;
+  --el-button-active-bg-color: #047857;
+  --el-button-active-border-color: #047857;
+  flex-shrink: 0;
+  min-width: 124px;
+  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.22);
+  font-weight: 700;
+}
+
+.skills-upload-btn:hover {
+  box-shadow: 0 12px 24px rgba(5, 150, 105, 0.28);
+}
+
+@media (max-width: 640px) {
+  .skills-hero-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .skills-upload-btn {
+    width: 100%;
+  }
 }
 </style>

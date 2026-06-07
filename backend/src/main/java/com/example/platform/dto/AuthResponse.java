@@ -9,6 +9,7 @@ public class AuthResponse {
         private Long id;
         private String username;
         private String role;
+        private String skillGovernanceRole;
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
@@ -16,6 +17,8 @@ public class AuthResponse {
         public void setUsername(String username) { this.username = username; }
         public String getRole() { return role; }
         public void setRole(String role) { this.role = role; }
+        public String getSkillGovernanceRole() { return skillGovernanceRole; }
+        public void setSkillGovernanceRole(String skillGovernanceRole) { this.skillGovernanceRole = skillGovernanceRole; }
     }
 
     public String getToken() { return token; }

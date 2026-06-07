@@ -12,7 +12,7 @@
           aria-label="返回首页"
         >
           <Icons name="logo" :size="26" class="text-primary shrink-0" />
-          <span class="hidden sm:inline">AI 资源与学习平台</span>
+          <span class="hidden sm:inline">AI Skill 资产平台</span>
         </router-link>
         <div class="flex items-center gap-2">
           <router-link
@@ -166,6 +166,12 @@ const IconBarChart = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke
   h('line', { x1: '18', y1: '20', x2: '18', y2: '4' }),
   h('line', { x1: '6', y1: '20', x2: '6', y2: '16' }),
 ])
+const IconUsers = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
+  h('path', { d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' }),
+  h('circle', { cx: '9', cy: '7', r: '4' }),
+  h('path', { d: 'M22 21v-2a4 4 0 0 0-3-3.87' }),
+  h('path', { d: 'M16 3.13a4 4 0 0 1 0 7.75' }),
+])
 
 const menuContent = [
   { path: '/admin/articles', label: 'AI知识库管理', icon: IconDocument },
@@ -175,10 +181,12 @@ const menuTools = [
   { path: '/admin/ai-tools', label: 'AI 工具管理', icon: IconWrench },
   { path: '/admin/mcp', label: 'MCP 管理', icon: IconPlug },
   { path: '/admin/rules', label: 'Rule 管理', icon: IconFileCode },
-  { path: '/admin/skills', label: 'Skill 管理', icon: IconBookOpen },
+  { path: '/admin/skills', label: 'Skill 资产', icon: IconBookOpen },
   { path: '/admin/external-skills', label: '外部 Skill', icon: IconExternalLink },
 ]
 const menuData = [
+  { path: '/admin/skill-operations', label: 'Skill 运营', icon: IconBarChart },
+  { path: '/admin/users', label: '用户管理', icon: IconUsers },
   { path: '/admin/llm-leaderboard', label: 'LLM 排行榜', icon: IconBarChart },
 ]
 </script>

@@ -50,6 +50,20 @@ app:
   admin:
     init-username: ${ADMIN_USERNAME:admin}
     init-password: ${ADMIN_PASSWORD:admin123}
+  skill:
+    gitlab:
+      enabled: ${SKILL_GITLAB_ENABLED:false}
+      base-url: ${SKILL_GITLAB_BASE_URL:}
+      token: ${SKILL_GITLAB_TOKEN:}
+      project-id: ${SKILL_GITLAB_PROJECT_ID:}
+      project-web-url: ${SKILL_GITLAB_PROJECT_WEB_URL:}
+      target-branch: ${SKILL_GITLAB_TARGET_BRANCH:main}
+      repository-path: ${SKILL_GITLAB_REPOSITORY_PATH:skills}
+      branch-prefix: ${SKILL_GITLAB_BRANCH_PREFIX:skill}
+    telemetry:
+      token: ${SKILL_TELEMETRY_TOKEN:}
+      gitlab:
+        token: ${SKILL_TELEMETRY_GITLAB_TOKEN:}
 
 server:
   servlet:

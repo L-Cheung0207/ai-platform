@@ -4,6 +4,13 @@ app:
   admin:
     init-username: admin
     init-password: admin123
+  skill:
+    telemetry:
+      token: dev-skill-telemetry-token
+      gitlab:
+        token: dev-skill-gitlab-token
+  seed:
+    pilot-skills: true
   scraper:
     ai-tools:
       max-items: 1  # 测试时只爬一条，正式爬取改为 0 表示不限

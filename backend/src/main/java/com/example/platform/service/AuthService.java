@@ -52,6 +52,7 @@ public class AuthService {
         info.setId(user.getId());
         info.setUsername(user.getUsername());
         info.setRole(user.getRole().name());
+        info.setSkillGovernanceRole(user.getSkillGovernanceRole().name());
         return info;
     }
 
@@ -62,6 +63,7 @@ public class AuthService {
         info.setId(user.getId());
         info.setUsername(user.getUsername());
         info.setRole(user.getRole().name());
+        info.setSkillGovernanceRole(user.getSkillGovernanceRole().name());
         res.setUser(info);
         return res;
     }

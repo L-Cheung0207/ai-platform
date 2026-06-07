@@ -1,0 +1,7 @@
+quick_validate.py PASSED
+
+Validated:
+- SKILL.md exists.
+- agents/openai.yaml exists.
+- Required frontmatter fields exist.
+- Upload checklist reference exists.

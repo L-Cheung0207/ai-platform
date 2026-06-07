@@ -10,10 +10,45 @@
       />
 
       <!-- 标签 -->
-      <div v-if="skill.tagNames?.length" class="flex flex-wrap gap-2 mb-8">
+      <div v-if="hasBadges" class="flex flex-wrap gap-2 mb-8">
         <span v-for="t in skill.tagNames" :key="t" class="tag-chip">{{ t }}</span>
         <span class="tag-chip tag-chip--muted">内部</span>
+        <span class="tag-chip tag-chip--asset">{{ assetLevelLabel(skill.assetLevel) }}</span>
+        <span class="tag-chip tag-chip--status">{{ lifecycleLabel(skill.lifecycleStatus) }}</span>
+        <span class="tag-chip">{{ skillCategoryLabel(skill.skillCategory) }}</span>
+        <span class="tag-chip tag-chip--priority">{{ buildPriorityLabel(skill.buildPriority) }}</span>
+        <span class="tag-chip tag-chip--risk">{{ riskLabel(skill.riskLevel) }}</span>
+        <span class="tag-chip tag-chip--validation">{{ validationStatusLabel(skill.templateValidationStatus) }}</span>
       </div>
+
+      <section class="asset-overview mb-8">
+        <div class="asset-overview-item">
+          <span class="asset-overview-label">维护人</span>
+          <strong>{{ skill.maintainer || skill.uploaderName || '—' }}</strong>
+        </div>
+        <div class="asset-overview-item">
+          <span class="asset-overview-label">团队/业务线</span>
+          <strong>{{ skill.teamName || '未分配' }}</strong>
+        </div>
+        <div class="asset-overview-item">
+          <span class="asset-overview-label">版本</span>
+          <strong>{{ skill.version || '1.0.0' }}</strong>
+        </div>
+        <div class="asset-overview-item">
+          <span class="asset-overview-label">分类/优先级</span>
+          <strong>{{ skillCategoryLabel(skill.skillCategory) }} / {{ buildPriorityLabel(skill.buildPriority) }}</strong>
+        </div>
+        <div class="asset-overview-item">
+          <span class="asset-overview-label">下次复审</span>
+          <strong>{{ skill.nextReviewAt || '未设置' }}</strong>
+        </div>
+        <div class="asset-overview-item">
+          <span class="asset-overview-label">模板校验</span>
+          <strong>{{ validationStatusLabel(skill.templateValidationStatus) }}</strong>
+        </div>
+      </section>
+
+      <SkillGovernancePanel v-if="skill.id" :skill-id="skill.id" />
 
       <!-- 快捷安装 -->
       <section class="mb-8">
@@ -33,6 +68,52 @@
             </svg>
           </button>
         </div>
+      </section>
+
+      <section v-if="hasStructuredGuide" class="mb-8">
+        <h2 class="text-[18px] font-semibold text-[#1f2937] mb-4">资产化说明</h2>
+        <div class="asset-guide-grid">
+          <article v-if="skill.applicableScenarios" class="asset-guide-item">
+            <h3>适用场景</h3>
+            <p>{{ skill.applicableScenarios }}</p>
+          </article>
+          <article v-if="skill.nonApplicableScenarios" class="asset-guide-item">
+            <h3>不适用场景</h3>
+            <p>{{ skill.nonApplicableScenarios }}</p>
+          </article>
+          <article v-if="skill.inputRequirements" class="asset-guide-item">
+            <h3>输入要求</h3>
+            <p>{{ skill.inputRequirements }}</p>
+          </article>
+          <article v-if="skill.outputFormat" class="asset-guide-item">
+            <h3>输出格式</h3>
+            <p>{{ skill.outputFormat }}</p>
+          </article>
+          <article v-if="skill.qualityStandard" class="asset-guide-item">
+            <h3>质量标准</h3>
+            <p>{{ skill.qualityStandard }}</p>
+          </article>
+          <article v-if="skill.referenceMaterials" class="asset-guide-item">
+            <h3>参考资料</h3>
+            <p>{{ skill.referenceMaterials }}</p>
+          </article>
+        </div>
+        <article v-if="skill.executionSteps" class="asset-guide-item asset-guide-item--wide">
+          <h3>执行步骤</h3>
+          <p>{{ skill.executionSteps }}</p>
+        </article>
+        <article v-if="skill.validationMethod" class="asset-guide-item asset-guide-item--wide">
+          <h3>验证方式</h3>
+          <p>{{ skill.validationMethod }}</p>
+        </article>
+        <article v-if="skill.sourceRepositoryUrl || skill.skillDirectory || skill.templateValidationNotes" class="asset-guide-item asset-guide-item--wide">
+          <h3>仓库与校验</h3>
+          <p>{{ repositoryInfo }}</p>
+        </article>
+        <article v-if="skill.reviewNotes" class="asset-guide-item asset-guide-item--wide">
+          <h3>评审备注</h3>
+          <p>{{ skill.reviewNotes }}</p>
+        </article>
       </section>
 
       <!-- Markdown 文档 -->
@@ -78,11 +159,73 @@ import api from '../services/api'
 import { ElMessage } from 'element-plus'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import SkillGovernancePanel from '../components/skills/SkillGovernancePanel.vue'
 
 const route = useRoute()
 const skill = ref(null)
 const loading = ref(true)
 const error = ref('')
+
+const assetLevelOptions = [
+  { value: 'TEAM', label: '团队级' },
+  { value: 'COMPANY', label: '公司级' },
+]
+
+const lifecycleOptions = [
+  { value: 'CANDIDATE', label: '候选' },
+  { value: 'TRIAL', label: '试用中' },
+  { value: 'REVIEWING', label: '评审中' },
+  { value: 'APPROVED', label: '已入库' },
+  { value: 'NEEDS_REVIEW', label: '待复审' },
+  { value: 'ARCHIVED', label: '已归档' },
+]
+
+const riskOptions = [
+  { value: 'LOW', label: '低风险' },
+  { value: 'MEDIUM', label: '中风险' },
+  { value: 'HIGH', label: '高风险' },
+]
+
+const skillCategoryOptions = [
+  { value: 'REQUIREMENT_ANALYSIS', label: '需求分析' },
+  { value: 'ARCHITECTURE_DESIGN', label: '架构设计' },
+  { value: 'CODING_IMPLEMENTATION', label: '编码实现' },
+  { value: 'TESTING_VALIDATION', label: '测试验证' },
+  { value: 'CODE_REVIEW', label: '代码 Review' },
+  { value: 'OPS_TROUBLESHOOTING', label: '排障运维' },
+  { value: 'DOCUMENTATION_KNOWLEDGE', label: '文档知识' },
+]
+
+const buildPriorityOptions = [
+  { value: 'P0', label: 'P0' },
+  { value: 'P1', label: 'P1' },
+  { value: 'P2', label: 'P2' },
+]
+
+const validationOptions = [
+  { value: 'UNVALIDATED', label: '未校验' },
+  { value: 'PASSED', label: '模板通过' },
+  { value: 'FAILED', label: '模板未通过' },
+]
+
+const hasStructuredGuide = computed(() => {
+  const s = skill.value
+  return Boolean(s?.applicableScenarios || s?.nonApplicableScenarios || s?.inputRequirements || s?.executionSteps || s?.outputFormat || s?.validationMethod || s?.qualityStandard || s?.referenceMaterials || s?.sourceRepositoryUrl || s?.skillDirectory || s?.templateValidationNotes || s?.reviewNotes)
+})
+
+const hasBadges = computed(() => {
+  const s = skill.value
+  return Boolean((s?.tagNames || []).length || s?.assetLevel || s?.lifecycleStatus || s?.riskLevel)
+})
+
+const repositoryInfo = computed(() => {
+  const s = skill.value || {}
+  return [
+    s.sourceRepositoryUrl ? `仓库地址：${s.sourceRepositoryUrl}` : '',
+    s.skillDirectory ? `Skill 目录：${s.skillDirectory}` : '',
+    s.templateValidationNotes ? `校验备注：${s.templateValidationNotes}` : '',
+  ].filter(Boolean).join('\n')
+})
 
 const renderedDescription = computed(() => {
   const raw = skill.value?.description || '暂无描述'
@@ -95,7 +238,7 @@ const renderedDescription = computed(() => {
 })
 
 const renderedMd = computed(() => {
-  const md = skill.value?.contentMd
+  const md = stripMarkdownFrontmatter(skill.value?.contentMd)
   if (!md) return ''
   try {
     const html = marked.parse(md, { gfm: true })
@@ -105,6 +248,11 @@ const renderedMd = computed(() => {
   }
 })
 
+function stripMarkdownFrontmatter(markdown) {
+  if (!markdown) return ''
+  return markdown.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/, '')
+}
+
 async function copy(text) {
   try {
     await navigator.clipboard.writeText(text)
@@ -112,6 +260,34 @@ async function copy(text) {
   } catch (_) {
     ElMessage.error('复制失败')
   }
+}
+
+function optionLabel(options, value, fallback = '—') {
+  return options.find((item) => item.value === value)?.label || fallback
+}
+
+function assetLevelLabel(value) {
+  return optionLabel(assetLevelOptions, value, '团队级')
+}
+
+function lifecycleLabel(value) {
+  return optionLabel(lifecycleOptions, value, '候选')
+}
+
+function riskLabel(value) {
+  return optionLabel(riskOptions, value, '低风险')
+}
+
+function skillCategoryLabel(value) {
+  return optionLabel(skillCategoryOptions, value, '编码实现')
+}
+
+function buildPriorityLabel(value) {
+  return optionLabel(buildPriorityOptions, value, 'P2')
+}
+
+function validationStatusLabel(value) {
+  return optionLabel(validationOptions, value, '未校验')
 }
 
 onMounted(async () => {
@@ -141,4 +317,79 @@ onMounted(async () => {
 .markdown-body :deep(table) { border-collapse: collapse; width: 100%; margin: 1em 0; }
 .markdown-body :deep(th), .markdown-body :deep(td) { border: 1px solid #e5e7eb; padding: 0.5em 0.75em; text-align: left; }
 .markdown-body :deep(th) { background: #f9fafb; font-weight: 600; }
+
+.asset-overview {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.asset-overview-item {
+  min-height: 76px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px 16px;
+}
+
+.asset-overview-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.asset-overview-item strong {
+  color: #1f2937;
+  font-size: 15px;
+}
+
+.asset-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.asset-guide-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.asset-guide-item--wide {
+  margin-bottom: 12px;
+}
+
+.asset-guide-item h3 {
+  margin: 0 0 8px;
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.asset-guide-item p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+@media (max-width: 900px) {
+  .asset-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .asset-guide-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .asset-overview {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

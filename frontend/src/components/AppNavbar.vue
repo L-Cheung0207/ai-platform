@@ -3,18 +3,18 @@
     <div class="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
       <router-link
         to="/"
-        class="flex items-center gap-2 text-lg font-bold text-[#1f2937] hover:text-primary transition-colors duration-200 cursor-pointer focus:outline-none rounded-lg -m-1 p-1"
+        class="shrink-0 flex items-center gap-2 text-lg font-bold text-[#1f2937] hover:text-primary transition-colors duration-200 cursor-pointer focus:outline-none rounded-lg -m-1 p-1"
         aria-label="返回首页"
       >
         <Icons name="logo" :size="28" class="text-primary" />
-        <span>Teleone AI 资源共享平台</span>
+        <span class="hidden lg:inline whitespace-nowrap">Teleone AI Skill 资产平台</span>
       </router-link>
-      <nav class="flex items-center gap-1">
+      <nav class="flex min-w-0 items-center gap-1 overflow-x-auto">
         <router-link
           v-for="link in navLinks"
           :key="link.path"
           :to="link.path"
-          class="px-3 py-2 rounded-lg text-sm transition-colors duration-200 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none"
+          class="shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-sm transition-colors duration-200 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center focus:outline-none"
           :class="isActive(link) ? 'text-primary font-medium' : 'text-[#6b7280] hover:text-primary'"
         >
           {{ link.label }}
@@ -23,39 +23,48 @@
           <router-link
             v-if="auth.user?.role === 'ADMIN'"
             to="/admin"
-            class="px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-primary transition-colors duration-200 cursor-pointer"
+            class="shrink-0 whitespace-nowrap px-3 py-2 rounded-lg text-sm text-gray-600 hover:text-primary transition-colors duration-200 cursor-pointer"
           >
             管理后台
           </router-link>
-          <span class="px-2 text-xs text-gray-400">{{ auth.user?.username }}</span>
+          <span class="shrink-0 whitespace-nowrap px-2 text-xs text-gray-400">{{ auth.user?.username }}</span>
           <el-button size="small" @click="auth.logout(); $router.push('/')">退出</el-button>
         </template>
         <template v-else>
-          <router-link to="/login">
+          <el-button v-if="usesSkillsLoginDialog" type="primary" size="small" @click="loginDialogVisible = true">登录/注册</el-button>
+          <router-link v-else to="/login" class="shrink-0">
             <el-button type="primary" size="small">登录/注册</el-button>
           </router-link>
         </template>
       </nav>
     </div>
   </header>
+  <LoginDialog
+    v-if="usesSkillsLoginDialog"
+    v-model="loginDialogVisible"
+    description="登录后可上传 Skill 包、手工登记并管理我的提交"
+  />
 </template>
 
 <script setup>
+import { computed, shallowRef } from 'vue'
 import Icons from './Icons.vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import LoginDialog from './auth/LoginDialog.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
+const loginDialogVisible = shallowRef(false)
+const usesSkillsLoginDialog = computed(() => (
+  route.path === '/skills' || route.path.startsWith('/skills/')
+))
 
 const navLinks = [
   { path: '/', label: '主页' },
-  { path: '/skills', label: 'Skills', activePaths: ['/skills', '/external-skills'] },
-  { path: '/rules', label: 'Rules' },
+  { path: '/skills', label: 'Skill资产库', activePaths: ['/skills', '/external-skills'] },
   { path: '/articles', label: 'AI知识库' },
   { path: '/news', label: 'AI资讯' },
-  { path: '/ai-tools', label: 'AI 工具' },
-  { path: '/mcp', label: 'MCP' },
   { path: '/llm-leaderboard', label: 'LLM 排行榜' },
 ]
 

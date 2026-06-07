@@ -34,6 +34,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/home").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories", "/api/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tags", "/api/tags/**").permitAll()
+                        .requestMatchers("/api/skills/me", "/api/skills/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/skills", "/api/skills/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/rules", "/api/rules/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/external-skills", "/api/external-skills/**").permitAll()
@@ -43,6 +44,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/mcp", "/api/mcp/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/llm-leaderboard", "/api/llm-leaderboard/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/skills/*/usage", "/api/skills/*/feedback").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/integrations/skill-telemetry",
+                                "/api/integrations/skill-telemetry/gitlab").permitAll()
                         // 认证：登录、注册
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register").permitAll()
                         // 需认证（管理后台登录后获取当前用户）

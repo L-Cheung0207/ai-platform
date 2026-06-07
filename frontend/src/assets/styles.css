@@ -69,6 +69,22 @@ html.scrollbar-visible body {
   color: #5b6b8a;
   background: #e2e8f2;
 }
+.tag-chip--asset {
+  color: #065f46;
+  background: #dff7ec;
+}
+.tag-chip--status {
+  color: #854d0e;
+  background: #fef3c7;
+}
+.tag-chip--risk {
+  color: #7f1d1d;
+  background: #fee2e2;
+}
+.tag-chip--validation {
+  color: #365314;
+  background: #ecfccb;
+}
 
 /* 管理后台弹窗：可拖动，高度不超出屏幕 */
 /* class 可能在 overlay 或 dialog 上，两种选择器都覆盖 */

@@ -1,5 +1,6 @@
 package com.example.platform.entity;
 
+import com.example.platform.entity.SkillReview.ReviewerRole;
 import jakarta.persistence.*;
 import java.time.Instant;
 
@@ -21,6 +22,10 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role = Role.NORMAL;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "skill_governance_role", nullable = false, length = 40)
+    private ReviewerRole skillGovernanceRole = ReviewerRole.CONTRIBUTOR;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -40,6 +45,8 @@ public class User {
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+    public ReviewerRole getSkillGovernanceRole() { return skillGovernanceRole; }
+    public void setSkillGovernanceRole(ReviewerRole skillGovernanceRole) { this.skillGovernanceRole = skillGovernanceRole; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

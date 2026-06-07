@@ -2,94 +2,148 @@
   <div class="home-page">
     <header class="home-hero">
       <div class="home-hero-inner">
-        <h1 class="home-title"><span class="home-title-gradient">探索 AI，</span>从这里开始</h1>
-        <p class="home-subtitle">分享 Skill、Rule、AI知识库与最新的AI资讯</p>
+        <p class="home-eyebrow">Teleone AI Skill Asset Platform</p>
+        <h1 class="home-title"><span class="home-title-gradient">AI Skill，</span>沉淀为资产</h1>
+        <p class="home-subtitle">统一沉淀、评审、复用和维护研发团队的 AI 能力</p>
       </div>
     </header>
 
     <main class="home-main max-w-[1400px] mx-auto px-6 py-10">
       <div class="home-layout">
         <div class="home-main-col">
-          <section v-if="latestAiTools?.length" class="home-section home-section-anim">
+          <section v-if="latestSkills?.length" class="home-section home-section--skills home-section-anim">
             <div class="home-section-header">
-              <h2 class="home-section-title">
-                <Icons name="sparkle" :size="20" class="text-primary" />
-                AI 工具
-              </h2>
-              <router-link to="/ai-tools" class="home-more">更多</router-link>
+              <div>
+                <p class="home-section-kicker">Asset Library</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="sparkle" :size="20" />
+                  </span>
+                  最新 Skill 资产
+                </h2>
+              </div>
+              <router-link to="/skills" class="home-more">更多</router-link>
             </div>
             <div class="home-grid-2">
               <router-link
-                v-for="(t, i) in latestAiTools"
-                :key="t.id"
-                :to="'/ai-tools/' + t.id"
-                class="home-card home-card-aitool"
+                v-for="(s, i) in latestSkills"
+                :key="s.id"
+                :to="'/skills/' + s.id"
+                class="home-card home-card-skill"
                 :style="{ animationDelay: `${i * 40}ms` }"
               >
-                <img
-                  v-if="t.logoUrl"
-                  :src="t.logoUrl"
-                  :alt="t.name"
-                  class="home-card-aitool-logo"
-                />
-                <div v-else class="home-card-aitool-logo home-card-aitool-logo-placeholder">
-                  {{ (t.name || '?')[0] }}
-                </div>
+                <div class="home-card-skill-marker">{{ assetLevelShort(s.assetLevel) }}</div>
                 <div class="home-card-body">
-                  <h3 class="home-card-title">{{ t.name }}</h3>
-                  <p class="home-card-desc">{{ t.summary || t.description || '暂无描述' }}</p>
+                  <div class="home-card-title-row">
+                    <h3 class="home-card-title">{{ s.name }}</h3>
+                    <span class="home-card-status">{{ lifecycleLabel(s.lifecycleStatus) }}</span>
+                  </div>
+                  <p class="home-card-desc">{{ s.description || '暂无描述' }}</p>
+                  <div class="home-card-meta">
+                    <span>{{ s.teamName || '未分配团队' }}</span>
+                    <span>{{ s.skillCategory || '通用能力' }}</span>
+                  </div>
                 </div>
               </router-link>
             </div>
           </section>
 
-          <section v-if="latestArticles?.length" class="home-section home-section-anim">
+          <section class="home-section home-section--knowledge home-section-anim">
             <div class="home-section-header">
-              <h2 class="home-section-title">
-                <Icons name="book" :size="20" class="text-primary" />
-                最新知识
-              </h2>
+              <div>
+                <p class="home-section-kicker">Knowledge</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="book" :size="20" />
+                  </span>
+                  最新知识
+                </h2>
+              </div>
               <router-link to="/articles" class="home-more">更多</router-link>
             </div>
-            <ul class="home-list">
+            <ul v-if="latestArticles?.length" class="home-list">
               <li v-for="(a, i) in latestArticles" :key="a.id" class="home-list-item" :style="{ animationDelay: `${i * 35}ms` }">
                 <router-link :to="'/articles/' + a.id" class="home-list-link">{{ a.title }}</router-link>
               </li>
             </ul>
+            <p v-else-if="!loading" class="home-empty">暂无知识内容</p>
           </section>
         </div>
 
-        <aside v-if="latestNews?.length || latestLlmLeaderboard?.length" class="home-sidebar">
-          <section v-if="latestLlmLeaderboard?.length" class="home-section home-section-news home-section-anim">
+        <aside v-if="latestExternalSkills?.length || latestNews?.length || latestLlmLeaderboard?.length" class="home-sidebar">
+          <section v-if="latestExternalSkills?.length" class="home-section home-section--external home-section-news home-section-anim">
             <div class="home-section-header">
-              <h2 class="home-section-title">
-                <Icons name="sparkle" :size="20" class="text-primary" />
-                最新编程模型排行榜
-              </h2>
+              <div>
+                <p class="home-section-kicker">Community</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="link" :size="20" />
+                  </span>
+                  外部 Skill
+                </h2>
+              </div>
+              <router-link to="/skills" class="home-more">更多</router-link>
+            </div>
+            <ul class="home-news-list">
+              <li v-for="(s, i) in latestExternalSkills" :key="s.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
+                <router-link :to="'/external-skills/' + s.id" class="home-news-link">
+                  <span class="home-news-num home-news-num-normal">{{ i + 1 }}</span>
+                  <span class="home-news-copy">
+                    <span class="home-news-title">{{ s.name }}</span>
+                    <span v-if="s.description" class="home-news-meta">{{ s.description }}</span>
+                  </span>
+                </router-link>
+              </li>
+            </ul>
+          </section>
+
+          <section v-if="latestLlmLeaderboard?.length" class="home-section home-section--leaderboard home-section-news home-section-anim">
+            <div class="home-section-header">
+              <div>
+                <p class="home-section-kicker">Leaderboard</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="sparkle" :size="20" />
+                  </span>
+                  最新编程模型排行榜
+                </h2>
+              </div>
               <router-link to="/llm-leaderboard" class="home-more">更多</router-link>
             </div>
             <ul class="home-news-list">
               <li v-for="(m, i) in latestLlmLeaderboard" :key="m.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
                 <router-link to="/llm-leaderboard" class="home-news-link">
                   <span class="home-news-num" :class="i < 3 ? 'home-news-num-hot' : 'home-news-num-normal'">{{ i + 1 }}</span>
-                  <span class="home-news-title">{{ m.rankBadge }}{{ m.modelName }}</span>
+                  <span class="home-news-copy">
+                    <span class="home-news-title">{{ m.rankBadge }}{{ m.modelName }}</span>
+                    <span v-if="m.organization || m.provider" class="home-news-meta">{{ m.organization || m.provider }}</span>
+                  </span>
                 </router-link>
               </li>
             </ul>
           </section>
-          <section v-if="latestNews?.length" class="home-section home-section-news home-section-anim">
+
+          <section v-if="latestNews?.length" class="home-section home-section--news home-section-news home-section-anim">
             <div class="home-section-header">
-              <h2 class="home-section-title">
-                <Icons name="sparkle" :size="20" class="text-primary" />
-                AI 资讯
-              </h2>
+              <div>
+                <p class="home-section-kicker">News</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="document" :size="20" />
+                  </span>
+                  AI 资讯
+                </h2>
+              </div>
               <router-link to="/news" class="home-more">更多</router-link>
             </div>
             <ul class="home-news-list">
               <li v-for="(n, i) in latestNews" :key="n.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
                 <router-link :to="'/news/' + n.id" class="home-news-link">
                   <span class="home-news-num" :class="i < 3 ? 'home-news-num-hot' : 'home-news-num-normal'">{{ i + 1 }}</span>
-                  <span class="home-news-title">{{ n.title }}</span>
+                  <span class="home-news-copy">
+                    <span class="home-news-title">{{ n.title }}</span>
+                    <span v-if="n.source" class="home-news-meta">{{ n.source }}</span>
+                  </span>
                 </router-link>
               </li>
             </ul>
@@ -108,7 +162,8 @@ import { ref, onMounted } from 'vue'
 import Icons from '../components/Icons.vue'
 import api from '../services/api'
 
-const latestAiTools = ref([])
+const latestSkills = ref([])
+const latestExternalSkills = ref([])
 const latestArticles = ref([])
 const latestNews = ref([])
 const latestLlmLeaderboard = ref([])
@@ -118,7 +173,8 @@ const error = ref('')
 onMounted(async () => {
   try {
     const data = await api.get('/home')
-    latestAiTools.value = data.latestAiTools || []
+    latestSkills.value = data.latestSkills || []
+    latestExternalSkills.value = data.latestExternalSkills || []
     latestArticles.value = data.latestArticles || []
     latestNews.value = (data.latestNews || []).slice(0, 10)
     latestLlmLeaderboard.value = data.latestLlmLeaderboard || []
@@ -128,6 +184,25 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function assetLevelShort(value) {
+  if (value === 'COMPANY') return '公司'
+  if (value === 'TEAM') return '团队'
+  if (value === 'PERSONAL') return '个人'
+  return '团队'
+}
+
+function lifecycleLabel(value) {
+  const labels = {
+    CANDIDATE: '候选',
+    TRIAL: '试用中',
+    REVIEWING: '评审中',
+    APPROVED: '已入库',
+    NEEDS_REVIEW: '待复审',
+    ARCHIVED: '已归档',
+  }
+  return labels[value] || '候选'
+}
 </script>
 
 <style scoped>
@@ -138,18 +213,16 @@ onMounted(async () => {
 
 .home-hero {
   position: relative;
-  padding: 3.5rem 1.5rem 4rem;
+  padding: 3.25rem 1.5rem 3.75rem;
   overflow: hidden;
-  /* 多层背景：渐变基底 +  subtle grid */
-  background: 
+  background:
     linear-gradient(rgba(46, 104, 184, 0.035) 1px, transparent 1px),
     linear-gradient(90deg, rgba(46, 104, 184, 0.035) 1px, transparent 1px),
     linear-gradient(165deg, #f0f7ff 0%, #e8f4f8 40%, #f5f9fc 100%);
   background-size: 28px 28px, 28px 28px, 100% 100%;
-  background-position: 0 0, 0 0, 0 0;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.68);
 }
-/* 右上角渐变光斑 */
+
 .home-hero::before {
   content: '';
   position: absolute;
@@ -160,7 +233,7 @@ onMounted(async () => {
   background: radial-gradient(ellipse at center, rgba(46, 201, 215, 0.12) 0%, transparent 70%);
   pointer-events: none;
 }
-/* 左下角渐变光斑 */
+
 .home-hero::after {
   content: '';
   position: absolute;
@@ -175,17 +248,26 @@ onMounted(async () => {
 .home-hero-inner {
   position: relative;
   z-index: 1;
-  max-width: 640px;
+  max-width: 760px;
   margin: 0 auto;
   text-align: center;
 }
 
+.home-eyebrow {
+  margin: 0 0 0.75rem;
+  color: #2E68B8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
 .home-title {
-  font-size: 3.5rem;
-  font-weight: 700;
+  font-size: 3.35rem;
+  font-weight: 760;
   color: #0f172a;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.5rem;
+  letter-spacing: 0;
+  line-height: 1.1;
+  margin: 0 0 0.75rem;
 }
 
 .home-title-gradient {
@@ -196,9 +278,11 @@ onMounted(async () => {
 }
 
 .home-subtitle {
-  font-size: 0.9375rem;
+  max-width: 32rem;
+  margin: 0 auto;
+  font-size: 0.96rem;
   color: #64748b;
-  margin-bottom: 2rem;
+  line-height: 1.75;
 }
 
 .home-layout {
@@ -226,12 +310,12 @@ onMounted(async () => {
 
 .home-sidebar {
   flex-shrink: 0;
-  width: 320px;
+  width: 340px;
   position: sticky;
   top: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 @media (max-width: 1023px) {
@@ -241,11 +325,52 @@ onMounted(async () => {
 }
 
 .home-section {
+  position: relative;
+  overflow: hidden;
   background: #fff;
-  border-radius: 16px;
-  padding: 1.5rem 1.75rem;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 14px;
+  padding: 1.45rem 1.65rem;
+  box-shadow: 0 2px 14px rgba(15, 23, 42, 0.045), 0 0 1px rgba(15, 23, 42, 0.06);
   animation: home-fade-up 0.5s ease-out both;
+}
+
+.home-section::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--home-section-accent, #2E68B8);
+}
+
+.home-section--skills {
+  --home-section-accent: #2EC9D7;
+  --home-section-soft: rgba(46, 201, 215, 0.1);
+  --home-section-text: #087987;
+}
+
+.home-section--knowledge {
+  --home-section-accent: #2E68B8;
+  --home-section-soft: rgba(46, 104, 184, 0.1);
+  --home-section-text: #2E68B8;
+}
+
+.home-section--external {
+  --home-section-accent: #16a34a;
+  --home-section-soft: rgba(22, 163, 74, 0.1);
+  --home-section-text: #15803d;
+}
+
+.home-section--leaderboard {
+  --home-section-accent: #EBC050;
+  --home-section-soft: rgba(235, 192, 80, 0.18);
+  --home-section-text: #b58105;
+}
+
+.home-section--news {
+  --home-section-accent: #EB8888;
+  --home-section-soft: rgba(235, 136, 136, 0.14);
+  --home-section-text: #d87070;
 }
 
 .home-section-anim:nth-child(1) { animation-delay: 0.05s; }
@@ -257,33 +382,56 @@ onMounted(async () => {
 .home-section-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.home-section-kicker {
+  margin: 0 0 0.34rem;
+  color: #94a3b8;
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .home-section-title {
-  font-size: 1.0625rem;
-  font-weight: 600;
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 720;
   color: #0f172a;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.58rem;
+}
+
+.home-section-icon {
+  width: 2.05rem;
+  height: 2.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: var(--home-section-text, #2E68B8);
+  background: var(--home-section-soft, rgba(46, 104, 184, 0.1));
 }
 
 .home-more {
-  font-size: 0.875rem;
-  color: var(--color-primary, #2563eb);
+  flex-shrink: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--home-section-text, var(--color-primary, #2563eb));
   transition: opacity 0.2s;
 }
 
 .home-more:hover {
-  opacity: 0.85;
+  opacity: 0.82;
   text-decoration: underline;
 }
 
 .home-grid-2 {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -296,94 +444,101 @@ onMounted(async () => {
 .home-card {
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  background: #fff;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
   transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
   animation: home-fade-up 0.45s ease-out both;
 }
 
-.home-card-no-icon .home-card-body {
-  padding: 1.25rem 1.5rem;
-}
-
-.home-card-aitool {
+.home-card-skill {
   flex-direction: row;
   align-items: flex-start;
   gap: 1rem;
+  min-height: 8.5rem;
   padding: 1rem 1.25rem;
 }
 
-.home-card-aitool .home-card-body {
+.home-card-skill .home-card-body {
   flex: 1;
   min-width: 0;
   padding: 0;
 }
 
-.home-card-aitool-logo {
-  width: 56px;
-  height: 56px;
+.home-card-skill-marker {
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
-  object-fit: contain;
-  border-radius: 12px;
-  background: #f9fafb;
-}
-
-.home-card-aitool-logo-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #9ca3af;
-  background: #f3f4f6;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2E68B8 0%, #2EC9D7 100%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 760;
 }
 
 .home-card:hover {
-  border-color: rgba(37, 99, 235, 0.4);
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+  border-color: rgba(46, 104, 184, 0.38);
+  box-shadow: 0 10px 24px rgba(46, 104, 184, 0.12);
   transform: translateY(-2px);
 }
 
-.home-card-icon {
-  height: 120px;
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+.home-card-title-row {
   display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.home-card-icon-rule {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-}
-
-.home-card-body {
-  padding: 1rem 1.25rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .home-card-title {
+  min-width: 0;
+  margin: 0;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 680;
   color: #0f172a;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.home-card-status {
+  flex-shrink: 0;
+  padding: 0.16rem 0.42rem;
+  border-radius: 6px;
+  color: #b58105;
+  background: rgba(235, 192, 80, 0.18);
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
 .home-card-desc {
   font-size: 0.8125rem;
   color: #64748b;
-  line-height: 1.5;
-  margin-top: 0.375rem;
+  line-height: 1.55;
+  margin-top: 0.48rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.home-card-tag {
-  margin-top: 0.75rem;
+.home-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.home-card-meta span {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  background: #f8fafc;
 }
 
 .home-list {
@@ -394,7 +549,7 @@ onMounted(async () => {
 }
 
 .home-list-item {
-  padding: 0.75rem 0;
+  padding: 0.82rem 0;
   border-bottom: 1px solid #f1f5f9;
   animation: home-fade-up 0.4s ease-out both;
 }
@@ -404,16 +559,15 @@ onMounted(async () => {
 }
 
 .home-list-link {
-  font-size: 0.9375rem;
+  font-size: 0.94rem;
   color: #334155;
   transition: color 0.2s;
 }
 
 .home-list-link:hover {
-  color: var(--color-primary, #2563eb);
+  color: var(--home-section-text, var(--color-primary, #2563eb));
 }
 
-/* 右侧 AI 资讯 */
 .home-section-news {
   min-width: 0;
 }
@@ -422,6 +576,7 @@ onMounted(async () => {
   list-style: none;
   padding: 0;
   margin: 0;
+  border-top: 1px solid #f1f5f9;
 }
 
 .home-news-item {
@@ -431,8 +586,8 @@ onMounted(async () => {
 .home-news-link {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.6rem 0;
+  gap: 0.6rem;
+  padding: 0.68rem 0;
   font-size: 0.875rem;
   color: #334155;
   border-bottom: 1px solid #f1f5f9;
@@ -444,7 +599,7 @@ onMounted(async () => {
 }
 
 .home-news-link:hover {
-  color: var(--color-primary, #2563eb);
+  color: var(--home-section-text, var(--color-primary, #2563eb));
 }
 
 .home-news-link:hover .home-news-num-hot {
@@ -459,12 +614,12 @@ onMounted(async () => {
 
 .home-news-num {
   flex-shrink: 0;
-  width: 1.25rem;
-  height: 1.25rem;
-  line-height: 1.25rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  line-height: 1.35rem;
   font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 4px;
+  font-weight: 700;
+  border-radius: 5px;
   text-align: center;
   transition: color 0.2s, background 0.2s;
 }
@@ -479,20 +634,36 @@ onMounted(async () => {
   background: rgba(235, 192, 80, 0.15);
 }
 
-.home-news-title {
+.home-news-copy {
   flex: 1;
   min-width: 0;
-  line-height: 1.4;
+}
+
+.home-news-title {
+  line-height: 1.42;
+  font-weight: 620;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.home-loading {
+.home-news-meta {
+  display: block;
+  margin-top: 0.22rem;
+  color: #64748b;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-loading,
+.home-empty {
   text-align: center;
   color: #64748b;
-  padding: 3rem 0;
+  padding: 2.25rem 0;
 }
 
 .home-alert {
@@ -513,7 +684,8 @@ onMounted(async () => {
 @media (prefers-reduced-motion: reduce) {
   .home-section,
   .home-card,
-  .home-list-item {
+  .home-list-item,
+  .home-news-item {
     animation: none !important;
   }
   .home-card:hover {
