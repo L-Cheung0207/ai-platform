@@ -517,6 +517,7 @@ function formatDate(value) {
 :global(.el-dialog.contributor-edit-dialog) {
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
   margin-top: 16px !important;
   display: flex;
   flex-direction: column;
@@ -544,8 +545,10 @@ function formatDate(value) {
 @media (max-height: 680px) {
   :global(.contributor-edit-dialog .el-dialog),
   :global(.el-dialog.contributor-edit-dialog) {
-    max-height: calc(100vh - 20px);
-    margin-top: 10px !important;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    margin-top: 12px !important;
+    margin-bottom: 12px !important;
   }
 }
 

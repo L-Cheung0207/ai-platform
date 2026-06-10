@@ -31,7 +31,7 @@
     </PageHero>
 
     <div class="max-w-[1280px] mx-auto px-6 py-8">
-      <ContributorSkillWorkspace v-model="contributorWorkspaceVisible" @changed="load" />
+      <ContributorSkillWorkspace v-model="contributorWorkspaceVisible" @changed="refreshSkills" />
       <LoginDialog
         v-model="loginDialogVisible"
         description="登录后可上传 Skill 包、手工登记并管理我的提交"
@@ -51,6 +51,36 @@
           @click="setTypeFilter(opt.value)"
         >
           {{ opt.label }}
+        </button>
+      </div>
+
+      <!-- 标签筛选 -->
+      <div v-if="tagList.length > 0" class="skills-tag-filter mb-8">
+        <button
+          type="button"
+          :class="[
+            'px-4 py-2 rounded-full text-[14px] font-medium transition-all duration-200 whitespace-nowrap',
+            selectedTagIds.length === 0
+              ? 'bg-primary text-white'
+              : 'bg-[#f3f4f6] text-[#4b5563] hover:bg-[#e5e7eb]'
+          ]"
+          @click="clearTagFilter"
+        >
+          全部标签
+        </button>
+        <button
+          v-for="t in tagList"
+          :key="t.id"
+          type="button"
+          :class="[
+            'px-4 py-2 rounded-full text-[14px] font-medium transition-all duration-200 whitespace-nowrap',
+            selectedTagIds.includes(t.id)
+              ? 'bg-primary text-white'
+              : 'bg-[#f3f4f6] text-[#4b5563] hover:bg-[#e5e7eb]'
+          ]"
+          @click="toggleTag(t.id)"
+        >
+          {{ t.name }}
         </button>
       </div>
 
@@ -131,6 +161,8 @@ const loading = ref(false)
 const error = ref('')
 const contributorWorkspaceVisible = ref(false)
 const loginDialogVisible = shallowRef(false)
+const tagList = ref([])
+const selectedTagIds = ref([])
 
 const typeOptions = [
   { value: 'all', label: '全部' },
@@ -185,6 +217,15 @@ function setTypeFilter(v) {
   load()
 }
 
+async function loadTags() {
+  try {
+    const list = await api.get('/tags', { params: { forEntity: 'skills' } })
+    tagList.value = list || []
+  } catch {
+    tagList.value = []
+  }
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -192,6 +233,7 @@ async function load() {
     const type = typeFilter.value
     const params = { page: 1, size: 500 }
     if (keyword.value) params.keyword = keyword.value
+    if (selectedTagIds.value.length > 0) params.tags = selectedTagIds.value.join(',')
 
     if (type === 'internal') {
       const data = await api.get('/skills', { params: { ...params, page: page.value, size: size.value } })
@@ -258,6 +300,28 @@ function search() {
   load()
 }
 
+function toggleTag(id) {
+  const idx = selectedTagIds.value.indexOf(id)
+  if (idx >= 0) {
+    selectedTagIds.value = selectedTagIds.value.filter((x) => x !== id)
+  } else {
+    selectedTagIds.value = [...selectedTagIds.value, id]
+  }
+  page.value = 1
+  load()
+}
+
+function clearTagFilter() {
+  selectedTagIds.value = []
+  page.value = 1
+  load()
+}
+
+function refreshSkills() {
+  loadTags()
+  load()
+}
+
 function openContributorWorkspace() {
   if (!auth.isAuthenticated) {
     loginDialogVisible.value = true
@@ -280,6 +344,7 @@ function onPageChange() {
 }
 
 onMounted(() => {
+  loadTags()
   load()
 })
 </script>
@@ -317,6 +382,23 @@ onMounted(() => {
 
 .skills-upload-btn:hover {
   box-shadow: 0 12px 24px rgba(5, 150, 105, 0.28);
+}
+
+.skills-tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.skills-tag-filter::-webkit-scrollbar {
+  height: 4px;
+}
+
+.skills-tag-filter::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
 }
 
 @media (max-width: 640px) {

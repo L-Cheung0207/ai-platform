@@ -33,12 +33,19 @@
               <th
                 v-for="col in sortableColumns"
                 :key="col.field"
-                class="px-4 py-3 text-xs font-semibold text-[#6b7280] tracking-wider  text-center cursor-pointer select-none hover:text-primary hover:bg-[#f3f4f6] transition-colors"
+                class="px-4 py-3 text-xs font-semibold text-[#6b7280] tracking-wider text-center cursor-pointer select-none hover:text-primary hover:bg-[#f3f4f6] transition-colors"
                 :class="{ 'text-primary': sortBy === col.field }"
                 @click="toggleSort(col.field)"
               >
-                {{ col.label }}
-                <span v-if="sortBy === col.field" class="ml-0.5">{{ sortOrder === 'desc' ? '↓' : '↑' }}</span>
+                <el-tooltip placement="top" :show-after="300" popper-class="llm-metric-tooltip">
+                  <template #content>
+                    <p class="llm-metric-tooltip-text">{{ col.description }}</p>
+                  </template>
+                  <span class="inline-flex items-center justify-center gap-0.5 border-b border-dashed border-[#d1d5db] hover:border-primary">
+                    {{ col.label }}
+                    <span v-if="sortBy === col.field">{{ sortOrder === 'desc' ? '↓' : '↑' }}</span>
+                  </span>
+                </el-tooltip>
               </th>
               <th class="px-4 py-3 text-xs font-semibold text-[#6b7280] tracking-wider min-w-[100px]">机构</th>
               <th class="px-4 py-3 text-xs font-semibold text-[#6b7280] tracking-wider min-w-[80px]">许可证</th>
@@ -96,35 +103,6 @@
       </p>
     </div>
 
-    <!-- 指标说明：排版与 MCP 页底部常见问题一致 -->
-    <section class="mcp-faq">
-      <div class="mcp-faq-inner">
-        <h2 class="mcp-faq-title">
-          <span class="mcp-faq-title-icon" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </span>
-          指标说明
-        </h2>
-        <dl class="mcp-faq-grid">
-          <div class="mcp-faq-card">
-            <dt class="mcp-faq-q">竞技场 Elo（Arena Elo）</dt>
-            <dd class="mcp-faq-a">来自 Chatbot Arena 的众包对战评分。用户在随机双盲对比中为不同模型的回答投票，平台基于数百万次投票用 Elo 算法计算各模型相对实力，分数越高表示在用户偏好中表现越好。</dd>
-          </div>
-          <div class="mcp-faq-card">
-            <dt class="mcp-faq-q">AAII</dt>
-            <dd class="mcp-faq-a">Artificial Analysis Intelligence Index（人工分析智能指数）v3，聚合 MMLU-Pro、Humanity’s Last Exam、AA-LCR、GPQA Diamond、AIME、IFBench、SciCode、LiveCodeBench、Terminal-Bench Hard、τ²-Bench Telecom 等 10 项挑战性评估的综合指数。</dd>
-          </div>
-          <div class="mcp-faq-card">
-            <dt class="mcp-faq-q">MMLU-Pro</dt>
-            <dd class="mcp-faq-a">Massive Multitask Language Understanding 的进阶版，面向多任务语言理解与推理的基准测试，涵盖多学科与高阶推理能力。</dd>
-          </div>
-          <div class="mcp-faq-card">
-            <dt class="mcp-faq-q">ARC-AGI</dt>
-            <dd class="mcp-faq-a">AI2 Reasoning Challenge — Artificial General Intelligence（通用人工智能基准）v2，用于衡量模型的流体智力与推理能力，题目来自科学考试等需要强推理的题型。</dd>
-          </div>
-        </dl>
-      </div>
-    </section>
   </div>
 </template>
 
@@ -134,12 +112,36 @@ import PageHero from '../components/PageHero.vue'
 import api from '../services/api'
 
 const sortableColumns = [
-  { field: 'arenaElo', label: '竞技场 Elo' },
-  { field: 'coding', label: '编程' },
-  { field: 'vision', label: '视觉' },
-  { field: 'aaii', label: 'AAII' },
-  { field: 'mmluPro', label: 'MMLU-Pro' },
-  { field: 'arcAgi', label: 'ARC-AGI' },
+  {
+    field: 'arenaElo',
+    label: '竞技场 Elo',
+    description: '来自 Chatbot Arena 的众包对战评分。用户在随机双盲对比中为不同模型的回答投票，平台基于数百万次投票用 Elo 算法计算各模型相对实力，分数越高表示在用户偏好中表现越好。',
+  },
+  {
+    field: 'coding',
+    label: '编程',
+    description: 'Chatbot Arena 编程专项竞技场评分，基于用户在代码生成与编程相关任务对战中的投票偏好，反映模型在编程场景下的相对实力。',
+  },
+  {
+    field: 'vision',
+    label: '视觉',
+    description: 'Chatbot Arena 视觉专项竞技场评分，基于用户在图像理解与视觉相关任务对战中的投票偏好，反映模型在视觉场景下的相对实力。',
+  },
+  {
+    field: 'aaii',
+    label: 'AAII',
+    description: 'Artificial Analysis Intelligence Index（人工分析智能指数）v3，聚合 MMLU-Pro、Humanity\'s Last Exam、AA-LCR、GPQA Diamond、AIME、IFBench、SciCode、LiveCodeBench、Terminal-Bench Hard、τ²-Bench Telecom 等 10 项挑战性评估的综合指数。',
+  },
+  {
+    field: 'mmluPro',
+    label: 'MMLU-Pro',
+    description: 'Massive Multitask Language Understanding 的进阶版，面向多任务语言理解与推理的基准测试，涵盖多学科与高阶推理能力。',
+  },
+  {
+    field: 'arcAgi',
+    label: 'ARC-AGI',
+    description: 'AI2 Reasoning Challenge — Artificial General Intelligence（通用人工智能基准）v2，用于衡量模型的流体智力与推理能力，题目来自科学考试等需要强推理的题型。',
+  },
 ]
 const items = ref([])
 const total = ref(0)
@@ -191,77 +193,13 @@ function search() {
 onMounted(load)
 </script>
 
-<style scoped>
-/* 与 MCP 页底部常见问题一致 */
-.mcp-faq {
-  background: #fff;
-  border-top: 1px solid #e5e7eb;
-  margin-top: 2.5rem;
-  padding: 3.5rem 1.5rem;
+<style>
+.llm-metric-tooltip {
+  max-width: 320px;
 }
-.mcp-faq-inner {
-  max-width: 960px;
-  margin: 0 auto;
-}
-.mcp-faq-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-size: 1.375rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 2rem;
-  text-align: center;
-}
-.mcp-faq-title-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(37, 99, 235, 0.1);
-  color: rgb(37, 99, 235);
-}
-.mcp-faq-title-icon svg {
-  width: 18px;
-  height: 18px;
-}
-.mcp-faq-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-@media (min-width: 640px) {
-  .mcp-faq-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.25rem;
-  }
-}
-.mcp-faq-card {
-  padding: 1.25rem 1.5rem;
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 1px solid #f1f5f9;
-  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
-}
-.mcp-faq-card:hover {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-.mcp-faq-q {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: #334155;
-  margin: 0 0 0.5rem;
-  line-height: 1.4;
-}
-.mcp-faq-a {
+.llm-metric-tooltip-text {
   margin: 0;
-  font-size: 0.875rem;
-  color: #64748b;
-  line-height: 1.65;
+  font-size: 0.8125rem;
+  line-height: 1.6;
 }
 </style>

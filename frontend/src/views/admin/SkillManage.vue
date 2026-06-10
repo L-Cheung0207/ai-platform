@@ -59,23 +59,27 @@
     <SkillValidationDialog v-model="validationDialogVisible" :skill="selectedSkill" :report="validationReport" />
     <SkillPackageImportDialog v-model="importDialogVisible" @imported="onPackageImported" />
 
-    <div class="flex flex-wrap gap-3 mb-4">
-      <el-button type="primary" @click="startNew">新建 Skill 资产</el-button>
-      <el-button @click="importDialogVisible = true">导入 Skill 包</el-button>
-      <el-input v-model="keyword" placeholder="关键词" maxlength="200" clearable class="w-48" @keyup.enter="load" />
-      <el-select v-model="assetLevelFilter" clearable placeholder="资产层级" class="w-36" @change="onFilterChange">
-        <el-option v-for="item in assetLevelOptions" :key="item.value" :label="item.label" :value="item.value" />
-      </el-select>
-      <el-select v-model="lifecycleFilter" clearable placeholder="生命周期" class="w-36" @change="onFilterChange">
-        <el-option v-for="item in lifecycleOptions" :key="item.value" :label="item.label" :value="item.value" />
-      </el-select>
-      <el-select v-model="skillCategoryFilter" clearable placeholder="Skill 分类" class="w-40" @change="onFilterChange">
-        <el-option v-for="item in skillCategoryOptions" :key="item.value" :label="item.label" :value="item.value" />
-      </el-select>
-      <el-select v-model="buildPriorityFilter" clearable placeholder="优先级" class="w-32" @change="onFilterChange">
-        <el-option v-for="item in buildPriorityOptions" :key="item.value" :label="item.label" :value="item.value" />
-      </el-select>
-      <el-button type="primary" @click="load">搜索</el-button>
+    <div class="admin-skills-toolbar">
+      <div class="admin-skills-actions">
+        <el-button type="primary" @click="startNew">新建 Skill 资产</el-button>
+        <el-button @click="importDialogVisible = true">导入 Skill 包</el-button>
+      </div>
+      <div class="skill-filter-grid" role="search" aria-label="Skill 筛选">
+        <el-input v-model="keyword" placeholder="关键词" maxlength="200" clearable class="skill-filter-keyword" @keyup.enter="load" />
+        <el-select v-model="assetLevelFilter" clearable placeholder="资产层级" class="skill-filter-control" @change="onFilterChange">
+          <el-option v-for="item in assetLevelOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+        <el-select v-model="lifecycleFilter" clearable placeholder="生命周期" class="skill-filter-control" @change="onFilterChange">
+          <el-option v-for="item in lifecycleOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+        <el-select v-model="skillCategoryFilter" clearable placeholder="Skill 分类" class="skill-filter-control" @change="onFilterChange">
+          <el-option v-for="item in skillCategoryOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+        <el-select v-model="buildPriorityFilter" clearable placeholder="优先级" class="skill-filter-control" @change="onFilterChange">
+          <el-option v-for="item in buildPriorityOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+        <el-button type="primary" class="skill-filter-submit" @click="load">搜索</el-button>
+      </div>
     </div>
     <el-table :data="items" stripe>
       <el-table-column prop="name" label="名称">
@@ -571,6 +575,51 @@ function validationTagType(value) {
 </script>
 
 <style scoped>
+.admin-skills-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-skills-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-skills-toolbar .admin-skills-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.skill-filter-grid {
+  display: flex;
+  flex: 1 1 640px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  justify-content: end;
+  min-width: 0;
+}
+
+.skill-filter-keyword {
+  flex: 1 1 200px;
+  min-width: 180px;
+  max-width: 280px;
+}
+
+.skill-filter-control {
+  flex: 0 1 136px;
+  min-width: 128px;
+}
+
+.skill-filter-submit {
+  flex: 0 0 auto;
+  min-width: 76px;
+}
+
 .admin-pagination {
   display: flex;
   justify-content: flex-end;
@@ -628,12 +677,35 @@ function validationTagType(value) {
 }
 
 @media (max-width: 720px) {
+  .skill-filter-submit {
+    flex: 1 1 128px;
+  }
+
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 520px) {
+  .admin-skills-toolbar,
+  .admin-skills-actions {
+    flex-direction: column;
+  }
+
+  .admin-skills-actions,
+  .skill-filter-grid {
+    width: 100%;
+  }
+
+  .admin-skills-actions :deep(.el-button),
+  .skill-filter-keyword,
+  .skill-filter-control,
+  .skill-filter-submit {
+    flex: 1 1 100%;
+    max-width: none;
+    width: 100%;
+  }
+
   .metrics-grid {
     grid-template-columns: 1fr;
   }

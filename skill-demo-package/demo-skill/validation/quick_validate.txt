@@ -1,0 +1,6 @@
+Validator: C:\Users\alex_zhang\.codex\skills\.system\skill-creator\scripts\quick_validate.py
+Skill path: D:\workspace\ai-platform\skill-demo-package\demo-skill
+Command:
+  python -c "import sys, runpy; sys.path.insert(0, r'D:\workspace\ai-platform\.tmp-skill-validate-py'); sys.argv=[r'C:\Users\alex_zhang\.codex\skills\.system\skill-creator\scripts\quick_validate.py', r'D:\workspace\ai-platform\skill-demo-package\demo-skill']; runpy.run_path(sys.argv[0], run_name='__main__')"
+Result:
+  Skill is valid!

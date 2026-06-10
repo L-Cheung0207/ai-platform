@@ -1,0 +1,7 @@
+interface:
+  display_name: "Demo Skill"
+  short_description: "Compact example skill package"
+  default_prompt: "Use $demo-skill to generate a short greeting and explain the skill structure."
+
+policy:
+  allow_implicit_invocation: true

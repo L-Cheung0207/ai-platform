@@ -103,7 +103,13 @@ function gitLabStatusText(publication) {
 </script>
 
 <template>
-  <el-dialog v-model="visible" :title="props.title" width="820px" class="skill-import-dialog" @closed="reset">
+  <el-dialog
+    v-model="visible"
+    :title="props.title"
+    width="820px"
+    class="skill-import-dialog"
+    @closed="reset"
+  >
     <el-upload
       drag
       accept=".zip,application/zip"
@@ -283,7 +289,4 @@ function gitLabStatusText(publication) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
-.skill-import-dialog :deep(.el-dialog) {
-  max-width: calc(100vw - 32px);
-}
 </style>

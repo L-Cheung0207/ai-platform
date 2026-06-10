@@ -68,6 +68,7 @@ function goRegister() {
     v-model="visible"
     :title="title"
     width="420px"
+    align-center
     class="login-dialog"
     append-to-body
     destroy-on-close
@@ -117,8 +118,12 @@ function goRegister() {
 </template>
 
 <style scoped>
+:global(.login-dialog.el-dialog.is-align-center) {
+  margin: auto !important;
+}
+
 .login-dialog__intro {
-  margin: -6px 0 20px;
+  margin: 0 0 20px;
   color: #64748b;
   font-size: 14px;
   line-height: 1.5;
