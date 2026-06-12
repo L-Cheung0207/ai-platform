@@ -2,9 +2,8 @@
   <div class="home-page">
     <header class="home-hero">
       <div class="home-hero-inner">
-        <p class="home-eyebrow">Teleone AI Skill Asset Platform</p>
-        <h1 class="home-title"><span class="home-title-gradient">AI Skill，</span>沉淀为资产</h1>
-        <p class="home-subtitle">统一沉淀、评审、复用和维护研发团队的 AI 能力</p>
+        <p class="home-eyebrow">AI原生实践中心 · AI Native Hub</p>
+        <h1 class="home-title">让 <span class="home-title-gradient">AI Native</span> 成为公司的默认工作方式</h1>
       </div>
     </header>
 
@@ -248,7 +247,8 @@ function lifecycleLabel(value) {
 .home-hero-inner {
   position: relative;
   z-index: 1;
-  max-width: 760px;
+  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   text-align: center;
 }
@@ -262,12 +262,13 @@ function lifecycleLabel(value) {
 }
 
 .home-title {
-  font-size: 3.35rem;
+  font-size: clamp(1rem, 2.4vw + 0.55rem, 3.35rem);
   font-weight: 760;
   color: #0f172a;
   letter-spacing: 0;
   line-height: 1.1;
   margin: 0 0 0.75rem;
+  white-space: nowrap;
 }
 
 .home-title-gradient {

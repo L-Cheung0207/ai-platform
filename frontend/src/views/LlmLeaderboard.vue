@@ -37,15 +37,18 @@
                 :class="{ 'text-primary': sortBy === col.field }"
                 @click="toggleSort(col.field)"
               >
-                <el-tooltip placement="top" :show-after="300" popper-class="llm-metric-tooltip">
-                  <template #content>
-                    <p class="llm-metric-tooltip-text">{{ col.description }}</p>
-                  </template>
-                  <span class="inline-flex items-center justify-center gap-0.5 border-b border-dashed border-[#d1d5db] hover:border-primary">
-                    {{ col.label }}
-                    <span v-if="sortBy === col.field">{{ sortOrder === 'desc' ? '↓' : '↑' }}</span>
-                  </span>
-                </el-tooltip>
+                <span class="inline-flex items-center justify-center gap-1">
+                  {{ col.label }}
+                  <span v-if="sortBy === col.field">{{ sortOrder === 'desc' ? '↓' : '↑' }}</span>
+                  <el-tooltip placement="top" :show-after="200" popper-class="llm-metric-tooltip">
+                    <template #content>
+                      <p class="llm-metric-tooltip-text">{{ col.description }}</p>
+                    </template>
+                    <el-icon class="metric-help-icon" @click.stop>
+                      <QuestionFilled />
+                    </el-icon>
+                  </el-tooltip>
+                </span>
               </th>
               <th class="px-4 py-3 text-xs font-semibold text-[#6b7280] tracking-wider min-w-[100px]">机构</th>
               <th class="px-4 py-3 text-xs font-semibold text-[#6b7280] tracking-wider min-w-[80px]">许可证</th>
@@ -108,6 +111,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import PageHero from '../components/PageHero.vue'
 import api from '../services/api'
 
@@ -192,6 +196,19 @@ function search() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.metric-help-icon {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  cursor: help;
+  vertical-align: middle;
+  transition: color 0.2s;
+}
+.metric-help-icon:hover {
+  color: var(--el-color-primary);
+}
+</style>
 
 <style>
 .llm-metric-tooltip {

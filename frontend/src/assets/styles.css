@@ -39,14 +39,47 @@
   }
 }
 
+html,
+body,
+#app,
+#focus-guard,
+.app-layout {
+  outline: none !important;
+  border: none;
+  box-shadow: none;
+}
+
+html:focus,
+body:focus,
+#app:focus {
+  outline: none !important;
+  border: none;
+  box-shadow: none;
+}
+
+/* Tailwind preflight 的 border 默认色为 currentColor（黑色），FOUC 时可能出现黑边 */
+*, ::before, ::after {
+  border-color: var(--border-color, #e5e7eb);
+}
+
+/* Chrome：鼠标/刷新触发的焦点不显示轮廓，键盘 Tab 仍保留 :focus-visible */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Chrome 83+ 表单控件焦点黑框 */
+.el-button:focus:not(:focus-visible) {
+  outline: none;
+}
+
 body {
   font-family: "Inter", "Noto Sans SC", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
   background: var(--bg-body);
 }
 
-/* 前台页面（非管理后台、非登录/注册）始终预留滚动条，避免导航切换时页面宽度抖动 */
-html.scrollbar-visible body {
-  overflow-y: scroll;
+/* 前台页面（非管理后台、非登录/注册）预留滚动条槽位，避免导航切换时页面宽度抖动 */
+html.scrollbar-visible {
+  scrollbar-gutter: stable;
 }
 
 /* 标签胶囊样式：浅蓝紫背景 + 深蓝紫文字 */
@@ -84,6 +117,10 @@ html.scrollbar-visible body {
 .tag-chip--validation {
   color: #365314;
   background: #ecfccb;
+}
+.tag-chip--priority {
+  color: #1e40af;
+  background: #dbeafe;
 }
 
 /* Element Plus Dialog：滚动条统一放在弹窗 body 内部 */
@@ -127,6 +164,88 @@ html.scrollbar-visible body {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/* 登录弹窗：紧凑高度，覆盖全局 dialog flex 撑满 */
+.el-overlay.login-dialog-modal {
+  backdrop-filter: blur(4px);
+  background-color: rgba(15, 23, 42, 0.38) !important;
+}
+
+.el-overlay.login-dialog-modal .el-overlay-dialog {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.el-overlay.login-dialog-modal .el-dialog {
+  --login-brand-blue: #2e68b8;
+  --login-brand-teal: #2ec9d7;
+  display: block;
+  width: 440px !important;
+  max-width: calc(100vw - 32px);
+  max-height: none;
+  height: auto;
+  margin: auto !important;
+  padding: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background:
+    linear-gradient(rgba(46, 104, 184, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(46, 104, 184, 0.028) 1px, transparent 1px),
+    linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  background-size: 24px 24px, 24px 24px, 100% 100%;
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.14),
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+}
+
+.el-overlay.login-dialog-modal .el-dialog::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--login-brand-blue) 0%, var(--login-brand-teal) 100%);
+  pointer-events: none;
+}
+
+.el-overlay.login-dialog-modal .login-dialog-header {
+  position: relative;
+  margin: 0;
+  padding: 1.5rem 1.5rem 0.25rem;
+  border-bottom: none;
+}
+
+.el-overlay.login-dialog-modal .el-dialog__headerbtn {
+  top: 1rem;
+  right: 1rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.92);
+  transition: background 0.2s ease;
+}
+
+.el-overlay.login-dialog-modal .el-dialog__headerbtn:hover {
+  background: rgba(226, 232, 240, 0.95);
+}
+
+.el-overlay.login-dialog-modal .el-dialog__headerbtn .el-dialog__close {
+  color: #64748b;
+  font-size: 1rem;
+}
+
+.el-overlay.login-dialog-modal .login-dialog-body {
+  flex: none !important;
+  min-height: 0;
+  overflow: visible;
+  padding: 0.75rem 1.5rem 1.25rem;
+}
+
+.el-overlay.login-dialog-modal .el-dialog__footer {
+  display: none;
 }
 
 /* 弹窗打开时，禁止父级（管理后台主内容区）出现滚动条 */

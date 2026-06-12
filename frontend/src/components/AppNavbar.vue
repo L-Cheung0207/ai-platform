@@ -7,7 +7,7 @@
         aria-label="返回首页"
       >
         <Icons name="logo" :size="28" class="text-primary" />
-        <span class="hidden lg:inline whitespace-nowrap">Teleone AI Skill 资产平台</span>
+        <span class="hidden lg:inline whitespace-nowrap">AI原生实践中心（AI Native Hub）</span>
       </router-link>
       <nav class="flex min-w-0 items-center gap-1 overflow-x-auto">
         <router-link
@@ -42,7 +42,6 @@
   <LoginDialog
     v-if="usesSkillsLoginDialog"
     v-model="loginDialogVisible"
-    description="登录后可上传 Skill 包、手工登记并管理我的提交"
   />
 </template>
 

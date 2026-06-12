@@ -175,7 +175,7 @@ function creationSourceLabel(value) {
         </el-form-item>
       </div>
       <el-form-item label="执行步骤">
-        <el-input v-model="form.executionSteps" type="textarea" :rows="6" maxlength="100000" show-word-limit class="font-mono text-sm" />
+        <el-input v-model="form.executionSteps" type="textarea" :rows="6" maxlength="100000" show-word-limit />
       </el-form-item>
       <el-form-item label="验证方式">
         <el-input v-model="form.validationMethod" type="textarea" :rows="4" maxlength="20000" show-word-limit />
@@ -190,7 +190,7 @@ function creationSourceLabel(value) {
         <el-input v-model="form.reviewNotes" type="textarea" :rows="3" maxlength="20000" show-word-limit />
       </el-form-item>
       <el-form-item label="Markdown 文档">
-        <el-input v-model="form.contentMd" type="textarea" :rows="8" placeholder="SKILL.md 等 Markdown 文档内容，详情页将渲染展示" class="font-mono text-sm" />
+        <el-input v-model="form.contentMd" type="textarea" :rows="8" placeholder="SKILL.md 等 Markdown 文档内容，详情页将渲染展示" />
       </el-form-item>
     </section>
   </el-form>
@@ -239,5 +239,11 @@ function creationSourceLabel(value) {
   .skill-form-grid--three {
     grid-template-columns: 1fr;
   }
+}
+
+.skill-asset-form :deep(textarea) {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
 }
 </style>

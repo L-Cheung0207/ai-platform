@@ -1,16 +1,53 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="scrollbar-visible">
   <head>
     <meta charset="UTF-8" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #f7f8fa;
+        outline: none !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+      html.scrollbar-visible {
+        scrollbar-gutter: stable;
+      }
+      #focus-guard {
+        position: fixed;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        outline: none !important;
+      }
+    </style>
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Skill 资产平台</title>
+    <title>AI原生实践中心（AI Native Hub）</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <div id="focus-guard" tabindex="-1" aria-hidden="true"></div>
     <div id="app"></div>
+    <script>
+      (function () {
+        function takeFocus() {
+          var guard = document.getElementById('focus-guard')
+          if (guard) guard.focus({ preventScroll: true })
+        }
+        takeFocus()
+        document.addEventListener('DOMContentLoaded', takeFocus)
+        window.addEventListener('pageshow', takeFocus)
+      })()
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

@@ -1,9 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { setAuthToken } from '../services/api'
+import Home from '../views/Home.vue'
 
 const routes = [
-  { path: '/', name: 'Home', component: () => import('../views/Home.vue'), meta: { title: '首页' } },
+  { path: '/', name: 'Home', component: Home, meta: { title: '首页' } },
   { path: '/skills', name: 'SkillList', component: () => import('../views/SkillList.vue'), meta: { title: 'Skill 列表' } },
   { path: '/skills/:id', name: 'SkillDetail', component: () => import('../views/SkillDetail.vue'), meta: { title: 'Skill 详情' } },
   { path: '/rules', name: 'RuleList', component: () => import('../views/RuleList.vue'), meta: { title: 'Rule 列表' } },
@@ -16,8 +17,6 @@ const routes = [
   { path: '/news/:id', name: 'NewsDetail', component: () => import('../views/NewsDetail.vue'), meta: { title: '资讯详情' } },
   { path: '/ai-tools', name: 'AiToolList', component: () => import('../views/AiToolList.vue'), meta: { title: 'AI 工具' } },
   { path: '/ai-tools/:id', name: 'AiToolDetail', component: () => import('../views/AiToolDetail.vue'), meta: { title: 'AI 工具详情' } },
-  { path: '/mcp', name: 'McpList', component: () => import('../views/McpList.vue'), meta: { title: 'MCP 服务器' } },
-  { path: '/mcp/:id', name: 'McpDetail', component: () => import('../views/McpDetail.vue'), meta: { title: 'MCP 详情' } },
   { path: '/llm-leaderboard', name: 'LlmLeaderboard', component: () => import('../views/LlmLeaderboard.vue'), meta: { title: 'LLM 排行榜' } },
   { path: '/login', name: 'Login', component: () => import('../views/Login.vue'), meta: { title: '登录' } },
   { path: '/register', name: 'Register', component: () => import('../views/Register.vue'), meta: { title: '注册' } },
@@ -25,12 +24,10 @@ const routes = [
     path: '/admin',
     component: () => import('../views/admin/AdminLayout.vue'),
     meta: { requiresAdmin: true, title: '管理后台' },
-    redirect: '/admin/articles',
+    redirect: '/admin/skills',
     children: [
       { path: 'articles', name: 'AdminArticles', component: () => import('../views/admin/ArticleManage.vue'), meta: { title: 'AI知识库管理' } },
-      { path: 'news', name: 'AdminNews', component: () => import('../views/admin/NewsManage.vue'), meta: { title: '资讯管理' } },
-      { path: 'ai-tools', name: 'AdminAiTools', component: () => import('../views/admin/AiToolManage.vue'), meta: { title: 'AI 工具管理' } },
-      { path: 'mcp', name: 'AdminMcp', component: () => import('../views/admin/McpManage.vue'), meta: { title: 'MCP 管理' } },
+      { path: 'news', name: 'AdminNews', component: () => import('../views/admin/NewsManage.vue'), meta: { title: 'AI资讯' } },
       { path: 'skills', name: 'AdminSkills', component: () => import('../views/admin/SkillManage.vue'), meta: { title: 'Skill 管理' } },
       { path: 'skill-operations', name: 'AdminSkillOperations', component: () => import('../views/admin/SkillOperations.vue'), meta: { title: 'Skill 运营' } },
       { path: 'users', name: 'AdminUsers', component: () => import('../views/admin/UserManage.vue'), meta: { title: '用户管理' } },

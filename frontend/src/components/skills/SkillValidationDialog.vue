@@ -32,7 +32,11 @@ function itemTagType(item) {
         <strong>{{ skill.name }}</strong>
         <span>{{ skill.skillDirectory || skill.sourceRepositoryUrl || '未登记来源' }}</span>
       </div>
-      <el-tag :type="report?.passed ? 'success' : 'danger'" effect="light">
+      <el-tag
+        :type="report?.passed ? 'success' : 'danger'"
+        effect="light"
+        class="validation-status-badge"
+      >
         {{ statusLabel }}
       </el-tag>
     </div>
@@ -53,7 +57,9 @@ function itemTagType(item) {
       </el-table-column>
       <el-table-column label="结果" width="100">
         <template #default="{ row }">
-          <el-tag :type="itemTagType(row)" size="small">{{ row.passed ? '通过' : '待补充' }}</el-tag>
+          <el-tag :type="itemTagType(row)" size="small" effect="light" class="validation-item-badge">
+            {{ row.passed ? '通过' : '待补充' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="message" label="说明" min-width="220" show-overflow-tooltip />
@@ -109,6 +115,66 @@ function itemTagType(item) {
 
 .validation-dialog :deep(.el-dialog) {
   max-width: calc(100vw - 32px);
+}
+
+.validation-status-badge {
+  flex-shrink: 0;
+  height: auto;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border-width: 1px;
+  border-style: solid;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.validation-dialog :deep(.validation-status-badge.el-tag--success.is-light) {
+  --el-tag-bg-color: #dff7ec;
+  --el-tag-border-color: #6ee7b7;
+  --el-tag-text-color: #065f46;
+  background-color: #dff7ec;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+
+.validation-dialog :deep(.validation-status-badge.el-tag--danger.is-light) {
+  --el-tag-bg-color: #fee2e2;
+  --el-tag-border-color: #fca5a5;
+  --el-tag-text-color: #991b1b;
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.validation-dialog :deep(.validation-item-badge.el-tag--success.is-light) {
+  --el-tag-bg-color: #ecfccb;
+  --el-tag-border-color: #bef264;
+  --el-tag-text-color: #365314;
+  background-color: #ecfccb;
+  border-color: #bef264;
+  color: #365314;
+  font-weight: 600;
+}
+
+.validation-dialog :deep(.validation-item-badge.el-tag--danger.is-light) {
+  --el-tag-bg-color: #fee2e2;
+  --el-tag-border-color: #fca5a5;
+  --el-tag-text-color: #991b1b;
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.validation-dialog :deep(.validation-item-badge.el-tag--warning.is-light) {
+  --el-tag-bg-color: #fef3c7;
+  --el-tag-border-color: #fcd34d;
+  --el-tag-text-color: #92400e;
+  background-color: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+  font-weight: 600;
 }
 
 @media (max-width: 640px) {

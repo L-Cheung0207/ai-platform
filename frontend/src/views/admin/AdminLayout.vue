@@ -12,7 +12,7 @@
           aria-label="返回首页"
         >
           <Icons name="logo" :size="26" class="text-primary shrink-0" />
-          <span class="hidden sm:inline">AI Skill 资产平台</span>
+          <span class="hidden lg:inline whitespace-nowrap">AI原生实践中心（AI Native Hub）</span>
         </router-link>
         <div class="flex items-center gap-2">
           <router-link
@@ -43,49 +43,16 @@
         aria-label="管理后台菜单"
       >
         <nav class="py-4 px-3 overflow-y-auto">
-          <!-- 内容管理 -->
-          <div class="mb-4">
+          <div
+            v-for="(group, index) in menuGroups"
+            :key="group.title"
+            :class="index < menuGroups.length - 1 ? 'mb-4' : ''"
+          >
             <p class="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              内容
+              {{ group.title }}
             </p>
             <ul class="space-y-0.5">
-              <li v-for="item in menuContent" :key="item.path">
-                <router-link
-                  :to="item.path"
-                  class="admin-nav-item"
-                  :class="{ 'admin-nav-item--active': isActive(item.path) }"
-                >
-                  <component :is="item.icon" class="admin-nav-item__icon" aria-hidden="true" />
-                  <span>{{ item.label }}</span>
-                </router-link>
-              </li>
-            </ul>
-          </div>
-          <!-- 工具与配置 -->
-          <div class="mb-4">
-            <p class="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              工具与配置
-            </p>
-            <ul class="space-y-0.5">
-              <li v-for="item in menuTools" :key="item.path">
-                <router-link
-                  :to="item.path"
-                  class="admin-nav-item"
-                  :class="{ 'admin-nav-item--active': isActive(item.path) }"
-                >
-                  <component :is="item.icon" class="admin-nav-item__icon" aria-hidden="true" />
-                  <span>{{ item.label }}</span>
-                </router-link>
-              </li>
-            </ul>
-          </div>
-          <!-- 数据 -->
-          <div>
-            <p class="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              数据
-            </p>
-            <ul class="space-y-0.5">
-              <li v-for="item in menuData" :key="item.path">
+              <li v-for="item in group.items" :key="item.path">
                 <router-link
                   :to="item.path"
                   class="admin-nav-item"
@@ -109,15 +76,13 @@
 </template>
 
 <script setup>
-import { computed, h } from 'vue'
+import { h } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import Icons from '../../components/Icons.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
-
-const activeMenu = computed(() => route.path)
 
 function isActive(path) {
   return route.path === path || route.path.startsWith(path + '/')
@@ -136,15 +101,6 @@ const IconNewspaper = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', strok
   h('path', { d: 'M18 14h-8' }),
   h('path', { d: 'M15 18h-5' }),
   h('path', { d: 'M10 6h8v4h-8V6Z' }),
-])
-const IconWrench = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
-  h('path', { d: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z' }),
-])
-const IconPlug = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
-  h('path', { d: 'M12 22v-5' }),
-  h('path', { d: 'M9 8V2' }),
-  h('path', { d: 'M15 8V2' }),
-  h('path', { d: 'M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z' }),
 ])
 const IconFileCode = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
   h('path', { d: 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z' }),
@@ -166,6 +122,14 @@ const IconBarChart = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke
   h('line', { x1: '18', y1: '20', x2: '18', y2: '4' }),
   h('line', { x1: '6', y1: '20', x2: '6', y2: '16' }),
 ])
+const IconTrophy = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
+  h('path', { d: 'M6 9H4.5a2.5 2.5 0 0 1 0-5H6' }),
+  h('path', { d: 'M18 9h1.5a2.5 2.5 0 0 0 0-5H18' }),
+  h('path', { d: 'M4 22h16' }),
+  h('path', { d: 'M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22' }),
+  h('path', { d: 'M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22' }),
+  h('path', { d: 'M18 2H6v7a6 6 0 0 0 12 0V2Z' }),
+])
 const IconUsers = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
   h('path', { d: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2' }),
   h('circle', { cx: '9', cy: '7', r: '4' }),
@@ -173,21 +137,30 @@ const IconUsers = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: '
   h('path', { d: 'M16 3.13a4 4 0 0 1 0 7.75' }),
 ])
 
-const menuContent = [
-  { path: '/admin/articles', label: 'AI知识库管理', icon: IconDocument },
-  { path: '/admin/news', label: '资讯管理', icon: IconNewspaper },
-]
-const menuTools = [
-  { path: '/admin/ai-tools', label: 'AI 工具管理', icon: IconWrench },
-  { path: '/admin/mcp', label: 'MCP 管理', icon: IconPlug },
-  { path: '/admin/rules', label: 'Rule 管理', icon: IconFileCode },
-  { path: '/admin/skills', label: 'Skill 资产', icon: IconBookOpen },
-  { path: '/admin/external-skills', label: '外部 Skill', icon: IconExternalLink },
-]
-const menuData = [
-  { path: '/admin/skill-operations', label: 'Skill 运营', icon: IconBarChart },
-  { path: '/admin/users', label: '用户管理', icon: IconUsers },
-  { path: '/admin/llm-leaderboard', label: 'LLM 排行榜', icon: IconBarChart },
+const menuGroups = [
+  {
+    title: 'Skill 资产',
+    items: [
+      { path: '/admin/skills', label: 'Skill 资产', icon: IconBookOpen },
+      { path: '/admin/external-skills', label: '外部 Skill', icon: IconExternalLink },
+      { path: '/admin/rules', label: 'Rule 管理', icon: IconFileCode },
+      { path: '/admin/skill-operations', label: 'Skill 运营', icon: IconBarChart },
+    ],
+  },
+  {
+    title: '内容与资讯',
+    items: [
+      { path: '/admin/articles', label: 'AI 知识库', icon: IconDocument },
+      { path: '/admin/news', label: 'AI资讯', icon: IconNewspaper },
+      { path: '/admin/llm-leaderboard', label: 'LLM 排行榜', icon: IconTrophy },
+    ],
+  },
+  {
+    title: '系统',
+    items: [
+      { path: '/admin/users', label: '用户管理', icon: IconUsers },
+    ],
+  },
 ]
 </script>
 

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="text-xl font-bold text-gray-800 mb-2">资讯管理</h1>
+    <h1 class="text-xl font-bold text-gray-800 mb-2">AI资讯</h1>
     <div class="flex flex-nowrap items-center gap-3 mb-4">
       <el-button type="primary" :loading="triggering" :disabled="status === 'running'" @click="triggerScrape">
         {{ status === 'running' ? '爬取中...' : '触发爬取' }}

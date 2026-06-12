@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { createReviewForm, formatReviewHistoryTime, hasSelectedReviewResult } from './reviewForm'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -25,7 +26,7 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 
-const form = reactive(createForm())
+const form = reactive(createReviewForm())
 
 const stageOptions = [
   { value: 'TEAM_REVIEW', label: '团队评审' },
@@ -82,27 +83,8 @@ watch(() => props.modelValue, async (value) => {
   }
 })
 
-function createForm() {
-  return {
-    reviewerName: '',
-    reviewerRole: 'CONTRIBUTOR',
-    reviewStage: 'TEAM_REVIEW',
-    result: 'PASSED',
-    truthful: true,
-    accurate: true,
-    reusable: true,
-    executable: true,
-    secure: true,
-    verifiable: true,
-    maintainable: true,
-    reviewedAt: new Date().toISOString().slice(0, 10),
-    nextReviewAt: '',
-    notes: '',
-  }
-}
-
 function resetForm() {
-  Object.assign(form, createForm())
+  Object.assign(form, createReviewForm())
   form.reviewerName = currentReviewerName.value
   form.reviewerRole = currentReviewerRole.value
 }
@@ -133,6 +115,10 @@ async function loadReviews() {
 async function submitReview() {
   if (!currentReviewerName.value) {
     ElMessage.warning('登录信息已过期，请重新登录')
+    return
+  }
+  if (!hasSelectedReviewResult(form)) {
+    ElMessage.warning('请选择评审结果')
     return
   }
   saving.value = true
@@ -206,7 +192,7 @@ function optionLabel(options, value) {
           </el-select>
         </el-form-item>
         <el-form-item label="结果">
-          <el-select v-model="form.result" class="w-full">
+          <el-select v-model="form.result" class="w-full" placeholder="请选择评审结果">
             <el-option v-for="item in resultOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
@@ -235,7 +221,9 @@ function optionLabel(options, value) {
     <div class="review-history">
       <div class="review-history__title">历史记录</div>
       <el-table v-loading="loading" :data="reviews" size="small" max-height="260">
-        <el-table-column prop="reviewedAt" label="日期" width="110" />
+        <el-table-column label="记录时间" width="170">
+          <template #default="{ row }">{{ formatReviewHistoryTime(row) }}</template>
+        </el-table-column>
         <el-table-column label="阶段" width="110">
           <template #default="{ row }">{{ optionLabel(stageOptions, row.reviewStage) }}</template>
         </el-table-column>

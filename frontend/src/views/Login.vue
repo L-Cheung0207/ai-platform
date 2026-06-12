@@ -7,7 +7,6 @@
           <h1 id="login-heading" class="auth-title">
             <span class="auth-title-accent">登录</span>
           </h1>
-          <p class="auth-desc">登录后即可登记 Skill、上传 Rule</p>
         </header>
         <el-form @submit.prevent="submit" class="auth-form">
           <el-form-item label="用户名" required>
@@ -165,13 +164,6 @@ async function submit() {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-.auth-desc {
-  font-size: 0.9375rem;
-  color: #64748b;
-  margin: 0;
-  line-height: 1.4;
 }
 
 .auth-form :deep(.el-form-item) {

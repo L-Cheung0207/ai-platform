@@ -34,7 +34,6 @@
       <ContributorSkillWorkspace v-model="contributorWorkspaceVisible" @changed="refreshSkills" />
       <LoginDialog
         v-model="loginDialogVisible"
-        description="登录后可上传 Skill 包、手工登记并管理我的提交"
         @success="onContributorLoginSuccess"
       />
 

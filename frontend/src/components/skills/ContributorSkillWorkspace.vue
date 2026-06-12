@@ -272,8 +272,10 @@ function formatDate(value) {
 <template>
   <el-drawer
     v-model="visible"
+    direction="rtl"
     size="min(1040px, 96vw)"
     class="contributor-workspace"
+    modal-class="contributor-workspace-modal"
     destroy-on-close
     @opened="loadMine"
   >
@@ -461,6 +463,29 @@ function formatDate(value) {
   justify-content: flex-end;
   flex-shrink: 0;
   padding-top: 2px;
+}
+
+:global(.contributor-workspace.el-drawer.rtl) {
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+:global(.el-drawer-fade-enter-active:has(.contributor-workspace)),
+:global(.el-drawer-fade-leave-active:has(.contributor-workspace)) {
+  transition: opacity 0.38s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+:global(.el-drawer-fade-enter-active:has(.contributor-workspace) .contributor-workspace.el-drawer),
+:global(.el-drawer-fade-leave-active:has(.contributor-workspace) .contributor-workspace.el-drawer) {
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+:global(.el-drawer-fade-enter-from:has(.contributor-workspace) .contributor-workspace.rtl),
+:global(.el-drawer-fade-leave-to:has(.contributor-workspace) .contributor-workspace.rtl) {
+  transform: translateX(100%);
+}
+
+:global(.contributor-workspace-modal.el-overlay) {
+  transition: opacity 0.38s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 :global(.contributor-workspace .el-drawer__header) {

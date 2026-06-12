@@ -1,50 +1,7 @@
 <template>
   <div>
     <h1 class="text-xl font-bold text-gray-800 mb-2">Skill 资产管理</h1>
-    <p class="text-gray-500 text-sm mb-4">管理员可维护 Skill 的层级、状态、复审和验证信息。隐藏后公开列表不可见。</p>
-
-    <section class="metrics-grid" v-loading="metricsLoading">
-      <article class="metric-item">
-        <span>资产总数</span>
-        <strong>{{ metrics?.totalSkills || 0 }}</strong>
-      </article>
-      <article class="metric-item">
-        <span>团队级/公司级资产</span>
-        <strong>{{ (metrics?.teamAssetCount || 0) + (metrics?.companyAssetCount || 0) }}</strong>
-      </article>
-      <article class="metric-item">
-        <span>已入库</span>
-        <strong>{{ metrics?.approvedCount || 0 }}</strong>
-      </article>
-      <article class="metric-item">
-        <span>模板通过</span>
-        <strong>{{ metrics?.templateValidatedCount || 0 }}</strong>
-      </article>
-      <article class="metric-item">
-        <span>模板未通过</span>
-        <strong>{{ metrics?.templateValidationFailedCount || 0 }}</strong>
-      </article>
-      <article class="metric-item">
-        <span>待复审</span>
-        <strong>{{ metrics?.needsReviewCount || 0 }}</strong>
-      </article>
-      <article class="metric-item">
-        <span>过期 Skill 比例</span>
-        <strong>{{ formatPercent(metrics?.overdueSkillRate) }}</strong>
-      </article>
-      <article class="metric-item">
-        <span>近 30 天使用</span>
-        <strong>{{ metrics?.monthlyUsageCount || 0 }}</strong>
-      </article>
-      <article class="metric-item">
-        <span>质量信号</span>
-        <strong>{{ metrics?.qualitySignalCount || 0 }}</strong>
-      </article>
-      <article class="metric-item">
-        <span>反馈待处理</span>
-        <strong>{{ metrics?.openFeedbackCount || 0 }}</strong>
-      </article>
-    </section>
+    <p class="text-gray-500 text-sm mb-4">管理员可维护 Skill 的层级、状态、复审和验证信息。visibility 字段只表示手动隐藏状态；前台展示是由 visibility 和生命周期共同计算出的派生状态。</p>
 
     <el-dialog v-model="editing" :title="editId ? '编辑 Skill 资产' : '新建 Skill 资产'" width="920" draggable class="admin-dialog">
       <SkillAssetForm v-model="form" @submit="saveSkill" />
@@ -55,7 +12,7 @@
     </el-dialog>
 
     <SkillReviewDialog v-model="reviewDialogVisible" :skill="selectedSkill" @saved="onGovernanceChanged" />
-    <SkillFeedbackDrawer v-model="feedbackDrawerVisible" :skill="selectedSkill" @updated="loadMetrics" />
+    <SkillFeedbackDrawer v-model="feedbackDrawerVisible" :skill="selectedSkill" @updated="load" />
     <SkillValidationDialog v-model="validationDialogVisible" :skill="selectedSkill" :report="validationReport" />
     <SkillPackageImportDialog v-model="importDialogVisible" @imported="onPackageImported" />
 
@@ -139,10 +96,17 @@
           <span class="text-sm text-gray-600">{{ row.nextReviewAt || '—' }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="visibility" label="状态" width="100">
+      <el-table-column prop="visibility" label="visibility" width="110">
         <template #default="{ row }">
           <el-tag :type="row.visibility === 'VISIBLE' ? 'success' : 'info'" size="small">
-            {{ row.visibility === 'VISIBLE' ? '可见' : '已隐藏' }}
+            {{ row.visibility === 'VISIBLE' ? '未隐藏' : '已隐藏' }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="前台展示(派生)" width="130">
+        <template #default="{ row }">
+          <el-tag :type="isPubliclyVisible(row) ? 'success' : 'warning'" size="small">
+            {{ isPubliclyVisible(row) ? '前台可见' : '前台隐藏' }}
           </el-tag>
         </template>
       </el-table-column>
@@ -198,8 +162,6 @@ const editId = ref(null)
 const form = ref(createEmptyForm())
 const saving = ref(false)
 const error = ref('')
-const metrics = ref(null)
-const metricsLoading = ref(false)
 const selectedSkill = ref(null)
 const reviewDialogVisible = ref(false)
 const feedbackDrawerVisible = ref(false)
@@ -257,10 +219,7 @@ const creationSourceOptions = [
   { value: 'SEED', label: '试点样板' },
 ]
 
-onMounted(() => {
-  load()
-  loadMetrics()
-})
+onMounted(load)
 
 function createEmptyForm() {
   return {
@@ -406,7 +365,6 @@ async function saveSkill() {
     }
     editing.value = false
     await load()
-    await loadMetrics()
   } catch (e) {
     error.value = e.message || '保存失败'
   } finally {
@@ -430,17 +388,6 @@ async function load() {
   }
 }
 
-async function loadMetrics() {
-  metricsLoading.value = true
-  try {
-    metrics.value = await api.get('/admin/skill-metrics')
-  } catch (e) {
-    error.value = e.message || '加载指标失败'
-  } finally {
-    metricsLoading.value = false
-  }
-}
-
 function openReview(row) {
   selectedSkill.value = row
   reviewDialogVisible.value = true
@@ -453,12 +400,10 @@ function openFeedback(row) {
 
 async function onGovernanceChanged() {
   await load()
-  await loadMetrics()
 }
 
 async function onPackageImported() {
   await load()
-  await loadMetrics()
 }
 
 async function validateTemplate(row) {
@@ -470,7 +415,6 @@ async function validateTemplate(row) {
     validationDialogVisible.value = true
     ElMessage.success(validationReport.value.passed ? '模板校验通过' : '模板校验未通过')
     await load()
-    await loadMetrics()
   } catch (e) {
     error.value = e.message || '模板校验失败'
   } finally {
@@ -483,7 +427,6 @@ async function hide(id) {
     await api.post('/admin/skills/' + id + '/hide')
     ElMessage.success('已隐藏')
     await load()
-    await loadMetrics()
   } catch (e) {
     error.value = e.message || '操作失败'
   }
@@ -494,7 +437,6 @@ async function unhide(id) {
     await api.post('/admin/skills/' + id + '/unhide')
     ElMessage.success('已恢复可见')
     await load()
-    await loadMetrics()
   } catch (e) {
     error.value = e.message || '操作失败'
   }
@@ -506,7 +448,6 @@ async function remove(id) {
     await api.delete('/admin/skills/' + id)
     ElMessage.success('删除成功')
     await load()
-    await loadMetrics()
   } catch (e) {
     if (e !== 'cancel') error.value = e.message || '删除失败'
   }
@@ -544,10 +485,6 @@ function creationSourceLabel(value) {
   return optionLabel(creationSourceOptions, value, '手工录入')
 }
 
-function formatPercent(value) {
-  return `${Number(value || 0).toFixed(1)}%`
-}
-
 function lifecycleTagType(value) {
   if (value === 'APPROVED') return 'success'
   if (value === 'NEEDS_REVIEW') return 'warning'
@@ -565,6 +502,10 @@ function priorityTagType(value) {
   if (value === 'P0') return 'danger'
   if (value === 'P1') return 'warning'
   return 'info'
+}
+
+function isPubliclyVisible(row) {
+  return row?.visibility === 'VISIBLE' && row?.lifecycleStatus === 'APPROVED'
 }
 
 function validationTagType(value) {
@@ -641,48 +582,9 @@ function validationTagType(value) {
   gap: 6px;
 }
 
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.metric-item {
-  min-height: 86px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #fff;
-  padding: 14px 16px;
-}
-
-.metric-item span {
-  display: block;
-  color: #6b7280;
-  font-size: 12px;
-  margin-bottom: 10px;
-}
-
-.metric-item strong {
-  display: block;
-  color: #111827;
-  font-size: 24px;
-  line-height: 1.1;
-}
-
-@media (max-width: 1280px) {
-  .metrics-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 720px) {
   .skill-filter-submit {
     flex: 1 1 128px;
-  }
-
-  .metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -704,10 +606,6 @@ function validationTagType(value) {
     flex: 1 1 100%;
     max-width: none;
     width: 100%;
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>
