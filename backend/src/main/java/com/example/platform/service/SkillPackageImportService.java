@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -72,23 +73,25 @@ public class SkillPackageImportService {
             return new SkillPackageImportResultDto(null, packageValidation, null, null);
         }
 
-        if (skillRepository.findFirstBySkillDirectoryIgnoreCase(parsed.skillDirectory()).isPresent()) {
-            SkillTemplateValidationDto duplicateReport = validatePackage(parsed,
-                    failed("duplicateSkill", "资产唯一性", "Skill 目录已存在：" + parsed.skillDirectory()));
-            return new SkillPackageImportResultDto(null, duplicateReport, null, null);
+        var existing = skillRepository.findFirstBySkillDirectoryIgnoreCase(parsed.skillDirectory());
+        if (existing.isPresent()) {
+            SkillDto skill = updateExistingSkillFromPackage(existing.get(), parsed);
+            SkillTemplateValidationDto assetValidation = skillGovernanceService.validateTemplate(skill.getId());
+            SkillDto savedSkill = skillService.getVisibleById(skill.getId());
+            return new SkillPackageImportResultDto(savedSkill, packageValidation, assetValidation, SkillGitLabPublishResultDto.disabled("已更新现有 Skill，未重新发布 GitLab"));
         }
 
-        SkillGitLabPublishResultDto gitLabPublication = gitLabSkillPublishService.publishPackage(
-                parsed.skillDirectory(),
-                skillInstallName(parsed),
-                publishableFiles(parsed)
-        );
         CreateSkillRequest request = buildCreateRequest(parsed);
-        applyGitLabPublication(request, gitLabPublication);
         SkillDto skill = skillService.createWithSource(request, uploaderId, CreationSource.SKILL_CREATOR_PACKAGE);
         SkillTemplateValidationDto assetValidation = skillGovernanceService.validateTemplate(skill.getId());
         SkillDto savedSkill = skillService.getVisibleById(skill.getId());
-        return new SkillPackageImportResultDto(savedSkill, packageValidation, assetValidation, gitLabPublication);
+        return new SkillPackageImportResultDto(savedSkill, packageValidation, assetValidation, SkillGitLabPublishResultDto.disabled("Skill 包已入库，评审通过后发布 GitLab"));
+    }
+
+    private SkillDto updateExistingSkillFromPackage(com.example.platform.entity.Skill existing, ParsedPackage parsed) {
+        CreateSkillRequest request = buildCreateRequest(parsed);
+        request.setLifecycleStatus(existing.getLifecycleStatus());
+        return skillService.adminUpdate(existing.getId(), request);
     }
 
     private PackageFiles readPackage(MultipartFile file) {
@@ -208,6 +211,7 @@ public class SkillPackageImportService {
         request.setDescription(parsed.description());
         request.setCloneCommand(buildGitCloneCommand(sourceRepositoryUrl(parsed)));
         request.setContentMd(parsed.skillMd());
+        request.setSkillPackageFiles(serializePackageFiles(publishableFiles(parsed)));
         request.setSourceRepositoryUrl(sourceRepositoryUrl(parsed));
         request.setSkillDirectory(parsed.skillDirectory());
         request.setAssetLevel(AssetLevel.TEAM);
@@ -229,37 +233,31 @@ public class SkillPackageImportService {
         return request;
     }
 
-    private void applyGitLabPublication(CreateSkillRequest request, SkillGitLabPublishResultDto publication) {
-        if (publication == null || !"PUBLISHED".equals(publication.status())) {
-            return;
-        }
-        if (hasText(publication.repositoryUrl())) {
-            request.setSourceRepositoryUrl(publication.repositoryUrl());
-            request.setCloneCommand(buildGitCloneCommand(publication.repositoryUrl()));
-        }
-
-        List<String> notes = new ArrayList<>();
-        if (hasText(request.getReviewNotes())) {
-            notes.add(request.getReviewNotes().trim());
-        }
-        if (hasText(publication.mergeRequestUrl())) {
-            notes.add("GitLab MR：" + publication.mergeRequestUrl());
-        }
-        if (hasText(publication.branchName())) {
-            notes.add("GitLab 分支：" + publication.branchName());
-        }
-        if (hasText(publication.skillPath())) {
-            notes.add("GitLab 路径：" + publication.skillPath());
-        }
-        request.setReviewNotes(blankToNull(String.join("\n", notes)));
-    }
-
     private Map<String, byte[]> publishableFiles(ParsedPackage parsed) {
         Map<String, byte[]> files = new LinkedHashMap<>();
         parsed.packageFiles().files().entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> files.put(relativePath(parsed, entry.getKey()), entry.getValue()));
         return files;
+    }
+
+    private String serializePackageFiles(Map<String, byte[]> files) {
+        StringBuilder json = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, byte[]> entry : files.entrySet()) {
+            if (!first) {
+                json.append(',');
+            }
+            json.append('"').append(jsonEscape(entry.getKey())).append('"')
+                    .append(':')
+                    .append('"').append(Base64.getEncoder().encodeToString(entry.getValue())).append('"');
+            first = false;
+        }
+        return json.append('}').toString();
+    }
+
+    private String jsonEscape(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private String skillInstallName(ParsedPackage parsed) {

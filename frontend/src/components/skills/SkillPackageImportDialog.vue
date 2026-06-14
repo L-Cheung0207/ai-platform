@@ -62,6 +62,7 @@ async function submitImport() {
     if (result.value?.skill) {
       ElMessage.success(props.successMessage)
       emit('imported', result.value)
+      visible.value = false
     } else {
       ElMessage.warning('Skill 包校验未通过')
     }

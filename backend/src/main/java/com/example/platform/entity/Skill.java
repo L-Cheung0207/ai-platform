@@ -26,6 +26,9 @@ public class Skill {
     @Column(name = "content_md", columnDefinition = "MEDIUMTEXT")
     private String contentMd;
 
+    @Column(name = "skill_package_files", columnDefinition = "LONGTEXT")
+    private String skillPackageFiles;
+
     @Column(name = "source_repository_url", length = 1000)
     private String sourceRepositoryUrl;
 
@@ -157,6 +160,8 @@ public class Skill {
     public void setCloneCommand(String cloneCommand) { this.cloneCommand = cloneCommand; }
     public String getContentMd() { return contentMd; }
     public void setContentMd(String contentMd) { this.contentMd = contentMd; }
+    public String getSkillPackageFiles() { return skillPackageFiles; }
+    public void setSkillPackageFiles(String skillPackageFiles) { this.skillPackageFiles = skillPackageFiles; }
     public String getSourceRepositoryUrl() { return sourceRepositoryUrl; }
     public void setSourceRepositoryUrl(String sourceRepositoryUrl) { this.sourceRepositoryUrl = sourceRepositoryUrl; }
     public String getSkillDirectory() { return skillDirectory; }

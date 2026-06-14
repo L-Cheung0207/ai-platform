@@ -136,6 +136,7 @@ public class SkillService {
         s.setDescription(req.getDescription());
         s.setCloneCommand(req.getCloneCommand());
         s.setContentMd(req.getContentMd());
+        s.setSkillPackageFiles(req.getSkillPackageFiles());
         s.setUploader(uploader);
         s.setVisibility(Visibility.VISIBLE);
         s.setCreationSource(creationSource != null ? creationSource : CreationSource.MANUAL);
@@ -160,6 +161,7 @@ public class SkillService {
         s.setDescription(req.getDescription());
         s.setCloneCommand(req.getCloneCommand());
         s.setContentMd(req.getContentMd());
+        s.setSkillPackageFiles(req.getSkillPackageFiles());
         applyAssetFields(s, req, s.getUploader() != null ? s.getUploader().getUsername() : null);
         if (templateChanged) {
             resetTemplateValidationAfterChange(s);
@@ -209,6 +211,7 @@ public class SkillService {
         s.setDescription(req.getDescription());
         s.setCloneCommand(req.getCloneCommand());
         s.setContentMd(req.getContentMd());
+        s.setSkillPackageFiles(req.getSkillPackageFiles());
         applyAssetFields(s, req, s.getUploader() != null ? s.getUploader().getUsername() : null);
         if (templateChanged) {
             resetTemplateValidationAfterChange(s);
@@ -259,6 +262,7 @@ public class SkillService {
                 || !sameText(skill.getDescription(), req.getDescription())
                 || !sameText(skill.getCloneCommand(), req.getCloneCommand())
                 || !sameText(skill.getContentMd(), req.getContentMd())
+                || !sameText(skill.getSkillPackageFiles(), req.getSkillPackageFiles())
                 || !sameText(skill.getSourceRepositoryUrl(), req.getSourceRepositoryUrl())
                 || !sameText(skill.getSkillDirectory(), req.getSkillDirectory())
                 || !sameText(skill.getMaintainer(), req.getMaintainer())
