@@ -152,6 +152,7 @@ const menuGroups = [
     items: [
       { path: '/admin/articles', label: 'AI 知识库', icon: IconDocument },
       { path: '/admin/news', label: 'AI资讯', icon: IconNewspaper },
+      { path: '/admin/github-trending', label: 'GitHub Trending', icon: IconTrophy },
       { path: '/admin/llm-leaderboard', label: 'LLM 排行榜', icon: IconTrophy },
     ],
   },

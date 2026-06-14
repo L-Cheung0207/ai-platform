@@ -28,6 +28,7 @@ const routes = [
     children: [
       { path: 'articles', name: 'AdminArticles', component: () => import('../views/admin/ArticleManage.vue'), meta: { title: 'AI知识库管理' } },
       { path: 'news', name: 'AdminNews', component: () => import('../views/admin/NewsManage.vue'), meta: { title: 'AI资讯' } },
+      { path: 'github-trending', name: 'AdminGitHubTrending', component: () => import('../views/admin/GitHubTrendingManage.vue'), meta: { title: 'GitHub Trending' } },
       { path: 'skills', name: 'AdminSkills', component: () => import('../views/admin/SkillManage.vue'), meta: { title: 'Skill 管理' } },
       { path: 'skill-operations', name: 'AdminSkillOperations', component: () => import('../views/admin/SkillOperations.vue'), meta: { title: 'Skill 运营' } },
       { path: 'users', name: 'AdminUsers', component: () => import('../views/admin/UserManage.vue'), meta: { title: '用户管理' } },
