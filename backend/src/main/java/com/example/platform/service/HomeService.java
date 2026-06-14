@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Comparator;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -17,16 +19,19 @@ public class HomeService {
     private final LearningArticleRepository articleRepository;
     private final NewsRepository newsRepository;
     private final LlmLeaderboardService llmLeaderboardService;
+    private final GitHubTrendingService gitHubTrendingService;
 
     public HomeService(SkillRepository skillRepository,
                        ExternalSkillRepository externalSkillRepository,
                        LearningArticleRepository articleRepository, NewsRepository newsRepository,
-                       LlmLeaderboardService llmLeaderboardService) {
+                       LlmLeaderboardService llmLeaderboardService,
+                       GitHubTrendingService gitHubTrendingService) {
         this.skillRepository = skillRepository;
         this.externalSkillRepository = externalSkillRepository;
         this.articleRepository = articleRepository;
         this.newsRepository = newsRepository;
         this.llmLeaderboardService = llmLeaderboardService;
+        this.gitHubTrendingService = gitHubTrendingService;
     }
 
     @Transactional(readOnly = true)
@@ -44,6 +49,16 @@ public class HomeService {
         dto.setLatestNews(newsRepository.findTop10ByOrderByPublishDateDescCreatedAtDesc());
         var leaderboardPage = llmLeaderboardService.list(null, 1, 10, "coding", "desc");
         dto.setLatestLlmLeaderboard(leaderboardPage.getContent());
+        List<GitHubTrendingDto> weekly = gitHubTrendingService.listHome(GitHubTrendingEntry.Period.WEEKLY);
+        List<GitHubTrendingDto> monthly = gitHubTrendingService.listHome(GitHubTrendingEntry.Period.MONTHLY);
+        dto.setGithubTrendingWeekly(weekly);
+        dto.setGithubTrendingMonthly(monthly);
+        dto.setGithubTrendingUpdatedAt(List.of(weekly, monthly).stream()
+                .flatMap(List::stream)
+                .map(GitHubTrendingDto::getLastSeenBatch)
+                .filter(Objects::nonNull)
+                .max(Comparator.naturalOrder())
+                .orElse(null));
         return dto;
     }
 }
