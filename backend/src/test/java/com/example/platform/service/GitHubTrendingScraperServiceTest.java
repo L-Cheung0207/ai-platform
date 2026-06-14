@@ -1,8 +1,10 @@
 package com.example.platform.service;
 
 import com.example.platform.entity.GitHubTrendingEntry;
+import org.jsoup.Jsoup;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +21,35 @@ class GitHubTrendingScraperServiceTest {
                 .isEqualTo("https://github.com/trending/c%2B%2B?since=monthly");
         assertThat(service.buildTrendingUrl(GitHubTrendingEntry.Period.WEEKLY, null))
                 .isEqualTo("https://github.com/trending?since=weekly");
+    }
+
+    @Test
+    void fetchUsesBuiltUrlTimeoutAndUserAgentWithoutRealNetwork() throws IOException {
+        CapturingFetcher fetcher = new CapturingFetcher("""
+                <html><body>
+                  <article class="Box-row">
+                    <h2><a href="/openai/codex"> openai / codex </a></h2>
+                    <p>A cloud coding agent.</p>
+                    <span itemprop="programmingLanguage">Go</span>
+                    <a href="/openai/codex/stargazers"> 9.8k </a>
+                    <a href="/openai/codex/forks"> 1,002 </a>
+                    <span>456 stars this month</span>
+                  </article>
+                </body></html>
+                """);
+        GitHubTrendingScraperService scraper = new GitHubTrendingScraperService(fetcher);
+
+        List<GitHubTrendingScraperService.TrendingRow> rows = scraper.fetch(
+                GitHubTrendingEntry.Period.MONTHLY,
+                "C++"
+        );
+
+        assertThat(fetcher.url).isEqualTo("https://github.com/trending/c%2B%2B?since=monthly");
+        assertThat(fetcher.timeoutMillis).isEqualTo(10_000);
+        assertThat(fetcher.userAgent).isEqualTo("ai-guide-style-website/1.0 (+https://github.com/trending)");
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).period()).isEqualTo(GitHubTrendingEntry.Period.MONTHLY);
+        assertThat(rows.get(0).repoFullName()).isEqualTo("openai/codex");
     }
 
     @Test
@@ -73,5 +104,24 @@ class GitHubTrendingScraperServiceTest {
         assertThat(second.stars()).isEqualTo(9800);
         assertThat(second.forks()).isEqualTo(1002);
         assertThat(second.starsGained()).isEqualTo(456);
+    }
+
+    private static class CapturingFetcher implements GitHubTrendingScraperService.DocumentFetcher {
+        private final String html;
+        private String url;
+        private int timeoutMillis;
+        private String userAgent;
+
+        private CapturingFetcher(String html) {
+            this.html = html;
+        }
+
+        @Override
+        public org.jsoup.nodes.Document fetch(String url, int timeoutMillis, String userAgent) {
+            this.url = url;
+            this.timeoutMillis = timeoutMillis;
+            this.userAgent = userAgent;
+            return Jsoup.parse(html, url);
+        }
     }
 }

@@ -19,7 +19,26 @@ import java.util.regex.Pattern;
 public class GitHubTrendingScraperService {
 
     private static final String BASE_URL = "https://github.com";
+    static final int FETCH_TIMEOUT_MILLIS = 10_000;
+    static final String FETCH_USER_AGENT = "ai-guide-style-website/1.0 (+https://github.com/trending)";
     private static final Pattern STARS_GAINED_PATTERN = Pattern.compile("([\\d,.]+\\s*[kKmM]?)\\s+stars?\\s+this\\s+(week|month)");
+
+    interface DocumentFetcher {
+        Document fetch(String url, int timeoutMillis, String userAgent) throws IOException;
+    }
+
+    private final DocumentFetcher documentFetcher;
+
+    public GitHubTrendingScraperService() {
+        this((url, timeoutMillis, userAgent) -> Jsoup.connect(url)
+                .timeout(timeoutMillis)
+                .userAgent(userAgent)
+                .get());
+    }
+
+    GitHubTrendingScraperService(DocumentFetcher documentFetcher) {
+        this.documentFetcher = documentFetcher;
+    }
 
     public record TrendingRow(
             GitHubTrendingEntry.Period period,
@@ -41,7 +60,7 @@ public class GitHubTrendingScraperService {
 
     public List<TrendingRow> fetch(GitHubTrendingEntry.Period period, String languageFilter) throws IOException {
         String url = buildTrendingUrl(period, languageFilter);
-        Document document = Jsoup.connect(url).get();
+        Document document = documentFetcher.fetch(url, FETCH_TIMEOUT_MILLIS, FETCH_USER_AGENT);
         return parseTrendingHtml(document.html(), period);
     }
 
