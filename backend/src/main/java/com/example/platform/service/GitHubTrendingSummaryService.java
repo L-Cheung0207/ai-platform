@@ -8,16 +8,28 @@ public class GitHubTrendingSummaryService {
 
     private static final int DESCRIPTION_LIMIT = 360;
 
-    public void applyFallbackSummary(GitHubTrendingEntry entry) {
+    public enum SummaryResultStatus { GENERATED, NEEDS_REVIEW, FAILED }
+
+    public record SummaryResult(String effectCn, String scenarioCn, SummaryResultStatus status) {}
+
+    public SummaryResult generate(GitHubTrendingEntry entry) {
+        return generateFallback(entry);
+    }
+
+    public SummaryResult generateFallback(GitHubTrendingEntry entry) {
         String description = normalize(entry.getDescription());
         if (description == null) {
-            entry.setEffectCn("GitHub Trending 未提供项目描述，暂无法可靠判断项目作用。");
-            entry.setScenarioCn("请管理员复核项目 README、仓库活跃度和适用场景后补充中文摘要。");
-        } else {
-            entry.setEffectCn("根据 GitHub 描述，该项目可能用于：" + trimDescription(description) + "。该摘要为保守兜底生成，需人工确认。");
-            entry.setScenarioCn("建议管理员结合 README、示例代码和 issue 活跃度复核后，再确认适用场景。");
+            return new SummaryResult(
+                    "GitHub Trending 未提供项目描述，暂无法可靠判断项目 " + repoName(entry) + " 的作用。",
+                    "请管理员复核 " + repoName(entry) + " 的 README、仓库活跃度和适用场景后补充中文摘要。",
+                    SummaryResultStatus.NEEDS_REVIEW
+            );
         }
-        entry.setSummaryStatus(GitHubTrendingEntry.SummaryStatus.NEEDS_REVIEW);
+        return new SummaryResult(
+                "根据 GitHub 描述，该项目可能用于：" + trimDescription(description) + "。该摘要为保守兜底生成，需人工确认。",
+                "建议管理员结合 " + repoName(entry) + " 的 README、示例代码和 issue 活跃度复核后，再确认适用场景。",
+                SummaryResultStatus.NEEDS_REVIEW
+        );
     }
 
     private String normalize(String value) {
@@ -32,5 +44,10 @@ public class GitHubTrendingSummaryService {
             return description;
         }
         return description.substring(0, DESCRIPTION_LIMIT).trim() + "...";
+    }
+
+    private String repoName(GitHubTrendingEntry entry) {
+        String repoFullName = normalize(entry.getRepoFullName());
+        return repoFullName == null ? "该仓库" : repoFullName;
     }
 }

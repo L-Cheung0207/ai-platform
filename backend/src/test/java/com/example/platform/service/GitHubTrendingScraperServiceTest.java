@@ -22,7 +22,7 @@ class GitHubTrendingScraperServiceTest {
     }
 
     @Test
-    void parsesTrendingArticleRowsIntoEntries() {
+    void parsesTrendingArticleRowsIntoRowsWithoutEntities() {
         String html = """
                 <html><body>
                   <article class="Box-row">
@@ -50,25 +50,28 @@ class GitHubTrendingScraperServiceTest {
                 </body></html>
                 """;
 
-        List<GitHubTrendingEntry> entries = service.parseTrendingHtml(html, GitHubTrendingEntry.Period.WEEKLY);
+        List<GitHubTrendingScraperService.TrendingRow> rows = service.parseTrendingHtml(
+                html,
+                GitHubTrendingEntry.Period.WEEKLY
+        );
 
-        assertThat(entries).hasSize(2);
-        GitHubTrendingEntry first = entries.get(0);
-        assertThat(first.getPeriod()).isEqualTo(GitHubTrendingEntry.Period.WEEKLY);
-        assertThat(first.getRank()).isEqualTo(1);
-        assertThat(first.getRepoFullName()).isEqualTo("modelcontextprotocol/servers");
-        assertThat(first.getRepoUrl()).isEqualTo("https://github.com/modelcontextprotocol/servers");
-        assertThat(first.getDescription()).isEqualTo("Model Context Protocol Servers");
-        assertThat(first.getLanguage()).isEqualTo("TypeScript");
-        assertThat(first.getStars()).isEqualTo(61234);
-        assertThat(first.getForks()).isEqualTo(7890);
-        assertThat(first.getStarsGained()).isEqualTo(1234);
+        assertThat(rows).hasSize(2);
+        GitHubTrendingScraperService.TrendingRow first = rows.get(0);
+        assertThat(first.period()).isEqualTo(GitHubTrendingEntry.Period.WEEKLY);
+        assertThat(first.rank()).isEqualTo(1);
+        assertThat(first.repoFullName()).isEqualTo("modelcontextprotocol/servers");
+        assertThat(first.repoUrl()).isEqualTo("https://github.com/modelcontextprotocol/servers");
+        assertThat(first.description()).isEqualTo("Model Context Protocol Servers");
+        assertThat(first.language()).isEqualTo("TypeScript");
+        assertThat(first.stars()).isEqualTo(61234);
+        assertThat(first.forks()).isEqualTo(7890);
+        assertThat(first.starsGained()).isEqualTo(1234);
 
-        GitHubTrendingEntry second = entries.get(1);
-        assertThat(second.getRank()).isEqualTo(2);
-        assertThat(second.getRepoFullName()).isEqualTo("openai/codex");
-        assertThat(second.getStars()).isEqualTo(9800);
-        assertThat(second.getForks()).isEqualTo(1002);
-        assertThat(second.getStarsGained()).isEqualTo(456);
+        GitHubTrendingScraperService.TrendingRow second = rows.get(1);
+        assertThat(second.rank()).isEqualTo(2);
+        assertThat(second.repoFullName()).isEqualTo("openai/codex");
+        assertThat(second.stars()).isEqualTo(9800);
+        assertThat(second.forks()).isEqualTo(1002);
+        assertThat(second.starsGained()).isEqualTo(456);
     }
 }

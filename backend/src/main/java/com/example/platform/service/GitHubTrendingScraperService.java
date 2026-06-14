@@ -6,6 +6,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -20,27 +21,45 @@ public class GitHubTrendingScraperService {
     private static final String BASE_URL = "https://github.com";
     private static final Pattern STARS_GAINED_PATTERN = Pattern.compile("([\\d,.]+\\s*[kKmM]?)\\s+stars?\\s+this\\s+(week|month)");
 
+    public record TrendingRow(
+            GitHubTrendingEntry.Period period,
+            int rank,
+            String repoFullName,
+            String repoUrl,
+            String description,
+            String language,
+            Integer stars,
+            Integer forks,
+            Integer starsGained
+    ) {}
+
     public String buildTrendingUrl(GitHubTrendingEntry.Period period, String languageFilter) {
         String since = period == GitHubTrendingEntry.Period.MONTHLY ? "monthly" : "weekly";
         String languagePath = normalizeLanguagePath(languageFilter);
         return BASE_URL + "/trending" + languagePath + "?since=" + since;
     }
 
-    public List<GitHubTrendingEntry> parseTrendingHtml(String html, GitHubTrendingEntry.Period period) {
+    public List<TrendingRow> fetch(GitHubTrendingEntry.Period period, String languageFilter) throws IOException {
+        String url = buildTrendingUrl(period, languageFilter);
+        Document document = Jsoup.connect(url).get();
+        return parseTrendingHtml(document.html(), period);
+    }
+
+    public List<TrendingRow> parseTrendingHtml(String html, GitHubTrendingEntry.Period period) {
         Document document = Jsoup.parse(html, BASE_URL);
-        List<GitHubTrendingEntry> entries = new ArrayList<>();
+        List<TrendingRow> rows = new ArrayList<>();
         int rank = 1;
         for (Element article : document.select("article.Box-row")) {
-            GitHubTrendingEntry entry = parseArticle(article, period, rank);
-            if (entry != null) {
-                entries.add(entry);
+            TrendingRow row = parseArticle(article, period, rank);
+            if (row != null) {
+                rows.add(row);
                 rank++;
             }
         }
-        return entries;
+        return rows;
     }
 
-    private GitHubTrendingEntry parseArticle(Element article, GitHubTrendingEntry.Period period, int rank) {
+    private TrendingRow parseArticle(Element article, GitHubTrendingEntry.Period period, int rank) {
         Element repoLink = article.selectFirst("h2 a[href]");
         if (repoLink == null) {
             return null;
@@ -51,17 +70,17 @@ public class GitHubTrendingScraperService {
             return null;
         }
 
-        GitHubTrendingEntry entry = new GitHubTrendingEntry();
-        entry.setPeriod(period);
-        entry.setRank(rank);
-        entry.setRepoFullName(repoFullName);
-        entry.setRepoUrl(BASE_URL + "/" + repoFullName);
-        entry.setDescription(textOrNull(article.selectFirst("p")));
-        entry.setLanguage(textOrNull(article.selectFirst("[itemprop=programmingLanguage]")));
-        entry.setStars(parseRepositoryCount(article, "/stargazers"));
-        entry.setForks(parseRepositoryCount(article, "/forks"));
-        entry.setStarsGained(parseStarsGained(article.text()));
-        return entry;
+        return new TrendingRow(
+                period,
+                rank,
+                repoFullName,
+                BASE_URL + "/" + repoFullName,
+                textOrNull(article.selectFirst("p")),
+                textOrNull(article.selectFirst("[itemprop=programmingLanguage]")),
+                parseRepositoryCount(article, "/stargazers"),
+                parseRepositoryCount(article, "/forks"),
+                parseStarsGained(article.text())
+        );
     }
 
     private String normalizeLanguagePath(String languageFilter) {

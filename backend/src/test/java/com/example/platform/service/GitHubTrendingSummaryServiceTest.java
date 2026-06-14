@@ -15,12 +15,15 @@ class GitHubTrendingSummaryServiceTest {
         entry.setRepoFullName("owner/repo");
         entry.setDescription("A lightweight framework for building AI workflow automations.");
 
-        service.applyFallbackSummary(entry);
+        GitHubTrendingSummaryService.SummaryResult result = service.generate(entry);
 
-        assertThat(entry.getEffectCn()).contains("根据 GitHub 描述");
-        assertThat(entry.getEffectCn()).contains("building AI workflow automations");
-        assertThat(entry.getScenarioCn()).contains("建议管理员结合 README");
-        assertThat(entry.getSummaryStatus()).isEqualTo(GitHubTrendingEntry.SummaryStatus.NEEDS_REVIEW);
+        assertThat(result.effectCn()).contains("根据 GitHub 描述");
+        assertThat(result.effectCn()).contains("building AI workflow automations");
+        assertThat(result.scenarioCn()).contains("owner/repo");
+        assertThat(result.scenarioCn()).contains("README");
+        assertThat(result.status()).isEqualTo(GitHubTrendingSummaryService.SummaryResultStatus.NEEDS_REVIEW);
+        assertThat(entry.getEffectCn()).isNull();
+        assertThat(entry.getScenarioCn()).isNull();
     }
 
     @Test
@@ -29,10 +32,13 @@ class GitHubTrendingSummaryServiceTest {
         entry.setRepoFullName("owner/repo");
         entry.setDescription("  ");
 
-        service.applyFallbackSummary(entry);
+        GitHubTrendingSummaryService.SummaryResult result = service.generateFallback(entry);
 
-        assertThat(entry.getEffectCn()).contains("GitHub Trending 未提供项目描述");
-        assertThat(entry.getScenarioCn()).contains("请管理员复核");
-        assertThat(entry.getSummaryStatus()).isEqualTo(GitHubTrendingEntry.SummaryStatus.NEEDS_REVIEW);
+        assertThat(result.effectCn()).contains("GitHub Trending 未提供项目描述");
+        assertThat(result.effectCn()).contains("owner/repo");
+        assertThat(result.scenarioCn()).contains("请管理员复核");
+        assertThat(result.status()).isEqualTo(GitHubTrendingSummaryService.SummaryResultStatus.NEEDS_REVIEW);
+        assertThat(entry.getEffectCn()).isNull();
+        assertThat(entry.getScenarioCn()).isNull();
     }
 }
