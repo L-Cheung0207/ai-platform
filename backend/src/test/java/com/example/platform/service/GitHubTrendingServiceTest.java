@@ -1,9 +1,9 @@
 package com.example.platform.service;
 
 import com.example.platform.entity.GitHubTrendingConfig;
-import com.example.platform.entity.GitHubTrendingRepository;
+import com.example.platform.entity.GitHubTrendingEntry;
 import com.example.platform.repository.GitHubTrendingConfigRepository;
-import com.example.platform.repository.GitHubTrendingRepositoryRepository;
+import com.example.platform.repository.GitHubTrendingEntryRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GitHubTrendingServiceTest {
 
     @Autowired
-    private GitHubTrendingRepositoryRepository trendingRepository;
+    private GitHubTrendingEntryRepository trendingEntryRepository;
 
     @Autowired
     private GitHubTrendingConfigRepository configRepository;
@@ -29,8 +29,8 @@ class GitHubTrendingServiceTest {
     @Test
     void repositoryFindsLatestVisibleRecordsByPeriod() {
         Instant batch = Instant.parse("2026-06-14T01:00:00Z");
-        GitHubTrendingRepository item = new GitHubTrendingRepository();
-        item.setPeriod(GitHubTrendingRepository.Period.WEEKLY);
+        GitHubTrendingEntry item = new GitHubTrendingEntry();
+        item.setPeriod(GitHubTrendingEntry.Period.WEEKLY);
         item.setRank(1);
         item.setRepoFullName("owner/repo");
         item.setRepoUrl("https://github.com/owner/repo");
@@ -41,13 +41,13 @@ class GitHubTrendingServiceTest {
         item.setStarsGained(240);
         item.setEffectCn("用于构建 AI 工具。");
         item.setScenarioCn("适合快速搭建内部原型。");
-        item.setSummaryStatus(GitHubTrendingRepository.SummaryStatus.GENERATED);
+        item.setSummaryStatus(GitHubTrendingEntry.SummaryStatus.GENERATED);
         item.setSourceFetchedAt(batch);
         item.setLastSeenBatch(batch);
-        trendingRepository.save(item);
+        trendingEntryRepository.save(item);
 
-        var page = trendingRepository.findLatestByPeriod(
-                GitHubTrendingRepository.Period.WEEKLY,
+        var page = trendingEntryRepository.findLatestByPeriod(
+                GitHubTrendingEntry.Period.WEEKLY,
                 batch,
                 PageRequest.of(0, 10)
         );

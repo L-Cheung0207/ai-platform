@@ -16,7 +16,7 @@ import java.time.Instant;
 @Entity
 @Table(name = "github_trending_repositories",
         uniqueConstraints = @UniqueConstraint(name = "uk_github_trending_period_repo", columnNames = {"period", "repo_full_name"}))
-public class GitHubTrendingRepository {
+public class GitHubTrendingEntry {
 
     public enum Period { WEEKLY, MONTHLY }
     public enum SummaryStatus { GENERATED, MANUAL, NEEDS_REVIEW, FAILED }
