@@ -260,6 +260,9 @@ onMounted(async () => {
     githubTrendingWeekly.value = data.githubTrendingWeekly || []
     githubTrendingMonthly.value = data.githubTrendingMonthly || []
     githubTrendingUpdatedAt.value = data.githubTrendingUpdatedAt || ''
+    if (!githubTrendingWeekly.value.length && githubTrendingMonthly.value.length) {
+      githubTrendingPeriod.value = 'monthly'
+    }
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
