@@ -13,6 +13,8 @@ import com.example.platform.repository.GitHubTrendingEntryRepository;
 import com.example.platform.service.GitHubTrendingService;
 import com.example.platform.service.GitHubTrendingSummaryService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -63,8 +65,14 @@ public class AdminGitHubTrendingController {
     }
 
     @PostMapping("/sync")
-    public ApiResponse<GitHubTrendingStatusDto> sync() {
-        return ApiResponse.ok(gitHubTrendingService.syncNow());
+    public ResponseEntity<ApiResponse<GitHubTrendingStatusDto>> sync() {
+        try {
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body(ApiResponse.ok(gitHubTrendingService.startSyncAsync()));
+        } catch (GitHubTrendingService.SyncAlreadyRunningException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.fail(409, ex.getMessage()));
+        }
     }
 
     @PostMapping("/{id}/regenerate-summary")

@@ -19,7 +19,9 @@ public class GitHubTrendingScheduler {
     @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Shanghai")
     public void syncDailyTrending() {
         try {
-            gitHubTrendingService.syncNow();
+            gitHubTrendingService.startSyncAsync();
+        } catch (GitHubTrendingService.SyncAlreadyRunningException ex) {
+            log.info("Scheduled GitHub trending sync skipped because another sync is already running");
         } catch (Exception ex) {
             log.error("Scheduled GitHub trending sync failed", ex);
         }

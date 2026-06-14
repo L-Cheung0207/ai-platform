@@ -14,6 +14,8 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -270,9 +272,22 @@ class GitHubTrendingSyncServiceTest {
                 GitHubTrendingConfigRepository configRepository,
                 StubGitHubTrendingScraperService scraperService,
                 StubGitHubTrendingSummaryService summaryService,
-                TransactionTemplate transactionTemplate
+                TransactionTemplate transactionTemplate,
+                TaskExecutor scraperTaskExecutor
         ) {
-            return new GitHubTrendingService(entryRepository, configRepository, scraperService, summaryService, transactionTemplate);
+            return new GitHubTrendingService(
+                    entryRepository,
+                    configRepository,
+                    scraperService,
+                    summaryService,
+                    transactionTemplate,
+                    scraperTaskExecutor
+            );
+        }
+
+        @Bean(name = "scraperTaskExecutor")
+        TaskExecutor scraperTaskExecutor() {
+            return new SyncTaskExecutor();
         }
     }
 

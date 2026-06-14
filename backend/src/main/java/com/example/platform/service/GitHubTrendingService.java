@@ -9,6 +9,8 @@ import com.example.platform.entity.GitHubTrendingConfig;
 import com.example.platform.entity.GitHubTrendingEntry;
 import com.example.platform.repository.GitHubTrendingConfigRepository;
 import com.example.platform.repository.GitHubTrendingEntryRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class GitHubTrendingService {
@@ -25,17 +28,27 @@ public class GitHubTrendingService {
     private final GitHubTrendingScraperService scraperService;
     private final GitHubTrendingSummaryService summaryService;
     private final TransactionTemplate transactionTemplate;
+    private final TaskExecutor scraperTaskExecutor;
+    private final AtomicBoolean syncRunning = new AtomicBoolean(false);
+
+    public static class SyncAlreadyRunningException extends RuntimeException {
+        public SyncAlreadyRunningException() {
+            super("GitHub Trending sync is already running");
+        }
+    }
 
     public GitHubTrendingService(GitHubTrendingEntryRepository entryRepository,
                                  GitHubTrendingConfigRepository configRepository,
                                  GitHubTrendingScraperService scraperService,
                                  GitHubTrendingSummaryService summaryService,
-                                 TransactionTemplate transactionTemplate) {
+                                 TransactionTemplate transactionTemplate,
+                                 @Qualifier("scraperTaskExecutor") TaskExecutor scraperTaskExecutor) {
         this.entryRepository = entryRepository;
         this.configRepository = configRepository;
         this.scraperService = scraperService;
         this.summaryService = summaryService;
         this.transactionTemplate = transactionTemplate;
+        this.scraperTaskExecutor = scraperTaskExecutor;
     }
 
     @Transactional(readOnly = true)
@@ -66,9 +79,7 @@ public class GitHubTrendingService {
         if (request.getHomeDisplayCount() != null) {
             config.setHomeDisplayCount(Math.min(30, Math.max(1, request.getHomeDisplayCount())));
         }
-        if (request.getRefreshCron() != null && !request.getRefreshCron().isBlank()) {
-            config.setRefreshCron(request.getRefreshCron().trim());
-        }
+        config.setRefreshCron(GitHubTrendingConfig.defaultConfig().getRefreshCron());
         return GitHubTrendingConfigDto.fromEntity(configRepository.save(config));
     }
 
@@ -85,7 +96,44 @@ public class GitHubTrendingService {
     }
 
     public GitHubTrendingStatusDto syncNow() {
+        if (!syncRunning.compareAndSet(false, true)) {
+            throw new SyncAlreadyRunningException();
+        }
+        try {
+            return runSync();
+        } finally {
+            syncRunning.set(false);
+        }
+    }
+
+    public GitHubTrendingStatusDto startSyncAsync() {
+        if (!syncRunning.compareAndSet(false, true)) {
+            throw new SyncAlreadyRunningException();
+        }
+        try {
+            GitHubTrendingConfig config = markSyncStarted();
+            scraperTaskExecutor.execute(() -> {
+                try {
+                    runSyncAfterStarted(config);
+                } finally {
+                    syncRunning.set(false);
+                }
+            });
+            return GitHubTrendingStatusDto.fromConfig(config);
+        } catch (RuntimeException ex) {
+            if (!(ex instanceof SyncAlreadyRunningException)) {
+                syncRunning.set(false);
+            }
+            throw ex;
+        }
+    }
+
+    private GitHubTrendingStatusDto runSync() {
         GitHubTrendingConfig config = markSyncStarted();
+        return runSyncAfterStarted(config);
+    }
+
+    private GitHubTrendingStatusDto runSyncAfterStarted(GitHubTrendingConfig config) {
         Instant batch = Instant.now();
         try {
             syncPeriodFetchedRows(

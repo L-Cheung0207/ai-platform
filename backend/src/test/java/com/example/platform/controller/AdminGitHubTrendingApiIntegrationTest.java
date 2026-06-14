@@ -21,9 +21,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -77,12 +83,13 @@ class AdminGitHubTrendingApiIntegrationTest {
                                 "languageFilter", " Java ",
                                 "keywordFilter", "agent",
                                 "homeDisplayCount", 12,
-                                "refreshCron", "0 0 8 * * *"
+                                "refreshCron", "0 15 3 * * *"
                         ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.languageFilter").value("Java"))
                 .andExpect(jsonPath("$.data.keywordFilter").value("agent"))
-                .andExpect(jsonPath("$.data.homeDisplayCount").value(12));
+                .andExpect(jsonPath("$.data.homeDisplayCount").value(12))
+                .andExpect(jsonPath("$.data.refreshCron").value("0 0 8 * * *"));
 
         mockMvc.perform(get("/api/admin/github-trending/config")
                         .header("Authorization", "Bearer " + token))
@@ -92,10 +99,11 @@ class AdminGitHubTrendingApiIntegrationTest {
 
         mockMvc.perform(post("/api/admin/github-trending/sync")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.latestWeeklyBatch").exists())
-                .andExpect(jsonPath("$.data.latestMonthlyBatch").exists());
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.data.status").value("RUNNING"))
+                .andExpect(jsonPath("$.data.startedAt").exists());
+
+        waitForSyncToComplete();
 
         mockMvc.perform(get("/api/admin/github-trending")
                         .param("period", "WEEKLY")
@@ -142,6 +150,29 @@ class AdminGitHubTrendingApiIntegrationTest {
                 .andExpect(jsonPath("$.data.summaryStatus").value("NEEDS_REVIEW"));
     }
 
+    @Test
+    void syncTriggerRejectsDuplicateWhileAsyncSyncIsRunning() throws Exception {
+        String token = adminToken();
+        TestGitHubTrendingScraperService.blockWeeklyFetch();
+
+        mockMvc.perform(post("/api/admin/github-trending/sync")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.data.status").value("RUNNING"));
+
+        TestGitHubTrendingScraperService.awaitWeeklyFetchStarted();
+
+        mockMvc.perform(post("/api/admin/github-trending/sync")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value(409))
+                .andExpect(jsonPath("$.message", containsString("GitHub Trending sync is already running")));
+
+        assertThat(TestGitHubTrendingScraperService.fetchCount()).isEqualTo(1);
+        TestGitHubTrendingScraperService.releaseBlockedFetch();
+        waitForSyncToComplete();
+    }
+
     private String adminToken() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -160,35 +191,87 @@ class AdminGitHubTrendingApiIntegrationTest {
         @Bean
         @Primary
         GitHubTrendingScraperService githubTrendingScraperService() {
-            return new GitHubTrendingScraperService() {
-                @Override
-                public List<TrendingRow> fetch(GitHubTrendingEntry.Period period, String languageFilter) throws IOException {
-                    if (period == GitHubTrendingEntry.Period.MONTHLY) {
-                        return List.of(new TrendingRow(
-                                period,
-                                1,
-                                "octo/monthly-agent",
-                                "https://github.com/octo/monthly-agent",
-                                "Monthly AI agent tooling",
-                                "Java",
-                                2000,
-                                120,
-                                300
-                        ));
+            return new TestGitHubTrendingScraperService();
+        }
+    }
+
+    private void waitForSyncToComplete() throws InterruptedException {
+        long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+        while (System.nanoTime() < deadline) {
+            GitHubTrendingConfig config = configRepository.findById(GitHubTrendingConfig.SINGLETON_ID).orElse(null);
+            if (config != null && config.getLastSyncStatus() == GitHubTrendingConfig.SyncStatus.COMPLETED) {
+                return;
+            }
+            Thread.sleep(50);
+        }
+        throw new AssertionError("GitHub Trending sync did not complete in time");
+    }
+
+    static class TestGitHubTrendingScraperService extends GitHubTrendingScraperService {
+        private static final AtomicInteger fetchCount = new AtomicInteger();
+        private static final AtomicReference<CountDownLatch> weeklyStarted = new AtomicReference<>();
+        private static final AtomicReference<CountDownLatch> weeklyRelease = new AtomicReference<>();
+
+        @Override
+        public List<TrendingRow> fetch(GitHubTrendingEntry.Period period, String languageFilter) throws IOException {
+            fetchCount.incrementAndGet();
+            if (period == GitHubTrendingEntry.Period.WEEKLY && weeklyStarted.get() != null) {
+                weeklyStarted.get().countDown();
+                try {
+                    if (!weeklyRelease.get().await(5, TimeUnit.SECONDS)) {
+                        throw new IOException("test weekly fetch release timed out");
                     }
-                    return List.of(new TrendingRow(
-                            period,
-                            1,
-                            "octo/weekly-agent",
-                            "https://github.com/octo/weekly-agent",
-                            "Weekly AI agent tooling",
-                            "Java",
-                            1000,
-                            80,
-                            100
-                    ));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("test weekly fetch interrupted", e);
                 }
-            };
+            }
+            if (period == GitHubTrendingEntry.Period.MONTHLY) {
+                return List.of(new TrendingRow(
+                        period,
+                        1,
+                        "octo/monthly-agent",
+                        "https://github.com/octo/monthly-agent",
+                        "Monthly AI agent tooling",
+                        "Java",
+                        2000,
+                        120,
+                        300
+                ));
+            }
+            return List.of(new TrendingRow(
+                    period,
+                    1,
+                    "octo/weekly-agent",
+                    "https://github.com/octo/weekly-agent",
+                    "Weekly AI agent tooling",
+                    "Java",
+                    1000,
+                    80,
+                    100
+            ));
+        }
+
+        static void blockWeeklyFetch() {
+            fetchCount.set(0);
+            weeklyStarted.set(new CountDownLatch(1));
+            weeklyRelease.set(new CountDownLatch(1));
+        }
+
+        static void awaitWeeklyFetchStarted() throws InterruptedException {
+            if (!weeklyStarted.get().await(5, TimeUnit.SECONDS)) {
+                throw new AssertionError("Weekly fetch did not start");
+            }
+        }
+
+        static void releaseBlockedFetch() {
+            weeklyRelease.get().countDown();
+            weeklyStarted.set(null);
+            weeklyRelease.set(null);
+        }
+
+        static int fetchCount() {
+            return fetchCount.get();
         }
     }
 }
