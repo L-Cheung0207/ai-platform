@@ -1,10 +1,14 @@
 package com.example.platform.dto;
 
 import com.example.platform.entity.GitHubTrendingEntry;
+import jakarta.validation.constraints.Size;
 
 public class GitHubTrendingUpdateRequest {
 
+    @Size(max = 1000)
     private String effectCn;
+
+    @Size(max = 1000)
     private String scenarioCn;
     private GitHubTrendingEntry.SummaryStatus summaryStatus;
 

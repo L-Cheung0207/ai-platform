@@ -11,8 +11,8 @@ import com.example.platform.repository.GitHubTrendingConfigRepository;
 import com.example.platform.repository.GitHubTrendingEntryRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -24,20 +24,23 @@ public class GitHubTrendingService {
     private final GitHubTrendingConfigRepository configRepository;
     private final GitHubTrendingScraperService scraperService;
     private final GitHubTrendingSummaryService summaryService;
+    private final TransactionTemplate transactionTemplate;
 
     public GitHubTrendingService(GitHubTrendingEntryRepository entryRepository,
                                  GitHubTrendingConfigRepository configRepository,
                                  GitHubTrendingScraperService scraperService,
-                                 GitHubTrendingSummaryService summaryService) {
+                                 GitHubTrendingSummaryService summaryService,
+                                 TransactionTemplate transactionTemplate) {
         this.entryRepository = entryRepository;
         this.configRepository = configRepository;
         this.scraperService = scraperService;
         this.summaryService = summaryService;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Transactional(readOnly = true)
     public List<GitHubTrendingDto> listHome(GitHubTrendingEntry.Period period) {
-        GitHubTrendingConfig config = getOrCreateConfig();
+        GitHubTrendingConfig config = findConfigOrDefault();
         Instant batch = period == GitHubTrendingEntry.Period.MONTHLY
                 ? config.getLatestMonthlyBatch()
                 : config.getLatestWeeklyBatch();
@@ -61,7 +64,7 @@ public class GitHubTrendingService {
         config.setLanguageFilter(blankToNull(request.getLanguageFilter()));
         config.setKeywordFilter(blankToNull(request.getKeywordFilter()));
         if (request.getHomeDisplayCount() != null) {
-            config.setHomeDisplayCount(Math.max(1, request.getHomeDisplayCount()));
+            config.setHomeDisplayCount(Math.min(30, Math.max(1, request.getHomeDisplayCount())));
         }
         if (request.getRefreshCron() != null && !request.getRefreshCron().isBlank()) {
             config.setRefreshCron(request.getRefreshCron().trim());
@@ -85,8 +88,16 @@ public class GitHubTrendingService {
         GitHubTrendingConfig config = markSyncStarted();
         Instant batch = Instant.now();
         try {
-            syncPeriod(GitHubTrendingEntry.Period.WEEKLY, config.getLanguageFilter(), batch);
-            syncPeriod(GitHubTrendingEntry.Period.MONTHLY, config.getLanguageFilter(), batch);
+            syncPeriodFetchedRows(
+                    GitHubTrendingEntry.Period.WEEKLY,
+                    scraperService.fetch(GitHubTrendingEntry.Period.WEEKLY, config.getLanguageFilter()),
+                    batch
+            );
+            syncPeriodFetchedRows(
+                    GitHubTrendingEntry.Period.MONTHLY,
+                    scraperService.fetch(GitHubTrendingEntry.Period.MONTHLY, config.getLanguageFilter()),
+                    batch
+            );
             GitHubTrendingConfig completed = markSyncCompleted(batch);
             return GitHubTrendingStatusDto.fromConfig(completed);
         } catch (Exception e) {
@@ -95,51 +106,58 @@ public class GitHubTrendingService {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected GitHubTrendingConfig markSyncStarted() {
-        GitHubTrendingConfig config = getOrCreateConfig();
-        config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.RUNNING);
-        config.setLastSyncError(null);
-        config.setLastSyncStartedAt(Instant.now());
-        config.setLastSyncFinishedAt(null);
-        return configRepository.save(config);
+    private GitHubTrendingConfig markSyncStarted() {
+        return transactionTemplate.execute(status -> {
+            GitHubTrendingConfig config = getOrCreateConfig();
+            config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.RUNNING);
+            config.setLastSyncError(null);
+            config.setLastSyncStartedAt(Instant.now());
+            config.setLastSyncFinishedAt(null);
+            return configRepository.save(config);
+        });
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected GitHubTrendingConfig markSyncCompleted(Instant batch) {
-        GitHubTrendingConfig config = getOrCreateConfig();
-        config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.COMPLETED);
-        config.setLastSyncError(null);
-        config.setLastSyncFinishedAt(Instant.now());
-        config.setLatestWeeklyBatch(batch);
-        config.setLatestMonthlyBatch(batch);
-        return configRepository.save(config);
+    private GitHubTrendingConfig markSyncCompleted(Instant batch) {
+        return transactionTemplate.execute(status -> {
+            GitHubTrendingConfig config = getOrCreateConfig();
+            config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.COMPLETED);
+            config.setLastSyncError(null);
+            config.setLastSyncFinishedAt(Instant.now());
+            config.setLatestWeeklyBatch(batch);
+            config.setLatestMonthlyBatch(batch);
+            return configRepository.save(config);
+        });
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void markSyncFailed(Exception e) {
-        GitHubTrendingConfig config = getOrCreateConfig();
-        config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.FAILED);
-        config.setLastSyncError(limit(e.getMessage(), 1000));
-        config.setLastSyncFinishedAt(Instant.now());
-        configRepository.save(config);
+    private void markSyncFailed(Exception e) {
+        transactionTemplate.executeWithoutResult(status -> {
+            GitHubTrendingConfig config = getOrCreateConfig();
+            config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.FAILED);
+            config.setLastSyncError(limit(e.getMessage(), 1000));
+            config.setLastSyncFinishedAt(Instant.now());
+            configRepository.save(config);
+        });
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void syncPeriod(GitHubTrendingEntry.Period period, String languageFilter, Instant batch) throws Exception {
-        List<GitHubTrendingScraperService.TrendingRow> rows = scraperService.fetch(period, languageFilter);
-        Instant fetchedAt = Instant.now();
-        for (GitHubTrendingScraperService.TrendingRow row : rows) {
-            GitHubTrendingEntry entry = entryRepository
-                    .findByPeriodAndRepoFullName(period, row.repoFullName())
-                    .orElseGet(GitHubTrendingEntry::new);
-            boolean isNew = entry.getId() == null;
-            applyRow(entry, row, fetchedAt, batch);
-            if (isNew) {
-                applyGeneratedSummary(entry);
+    private void syncPeriodFetchedRows(
+            GitHubTrendingEntry.Period period,
+            List<GitHubTrendingScraperService.TrendingRow> rows,
+            Instant batch
+    ) {
+        transactionTemplate.executeWithoutResult(status -> {
+            Instant fetchedAt = Instant.now();
+            for (GitHubTrendingScraperService.TrendingRow row : rows) {
+                GitHubTrendingEntry entry = entryRepository
+                        .findByPeriodAndRepoFullName(period, row.repoFullName())
+                        .orElseGet(GitHubTrendingEntry::new);
+                boolean isNew = entry.getId() == null;
+                applyRow(entry, row, fetchedAt, batch);
+                if (isNew) {
+                    applyGeneratedSummary(entry);
+                }
+                entryRepository.save(entry);
             }
-            entryRepository.save(entry);
-        }
+        });
     }
 
     private void applyRow(GitHubTrendingEntry entry,
@@ -173,6 +191,11 @@ public class GitHubTrendingService {
     private GitHubTrendingConfig getOrCreateConfig() {
         return configRepository.findById(GitHubTrendingConfig.SINGLETON_ID)
                 .orElseGet(() -> configRepository.save(GitHubTrendingConfig.defaultConfig()));
+    }
+
+    private GitHubTrendingConfig findConfigOrDefault() {
+        return configRepository.findById(GitHubTrendingConfig.SINGLETON_ID)
+                .orElseGet(GitHubTrendingConfig::defaultConfig);
     }
 
     private String blankToNull(String value) {

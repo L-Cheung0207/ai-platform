@@ -1,6 +1,7 @@
 package com.example.platform.service;
 
 import com.example.platform.dto.GitHubTrendingConfigDto;
+import com.example.platform.dto.GitHubTrendingDto;
 import com.example.platform.dto.GitHubTrendingStatusDto;
 import com.example.platform.entity.GitHubTrendingConfig;
 import com.example.platform.entity.GitHubTrendingEntry;
@@ -15,6 +16,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -119,6 +121,13 @@ class GitHubTrendingSyncServiceTest {
     }
 
     @Test
+    void listHomeUsesReadOnlyDefaultConfigWithoutCreatingConfig() {
+        assertThat(trendingService.listHome(GitHubTrendingEntry.Period.WEEKLY)).isEmpty();
+
+        assertThat(configRepository.findById(GitHubTrendingConfig.SINGLETON_ID)).isEmpty();
+    }
+
+    @Test
     void syncFailureKeepsPreviousBatchAndStoresFailureStatusAndError() throws Exception {
         Instant oldBatch = Instant.parse("2026-06-12T00:00:00Z");
         GitHubTrendingConfig config = GitHubTrendingConfig.defaultConfig();
@@ -135,7 +144,7 @@ class GitHubTrendingSyncServiceTest {
                 "旧场景",
                 oldBatch
         ));
-        scraperService.failure = new IOException("github unavailable");
+        scraperService.failures.put(GitHubTrendingEntry.Period.WEEKLY, new IOException("github unavailable"));
 
         assertThatThrownBy(() -> trendingService.syncNow())
                 .isInstanceOf(IllegalStateException.class)
@@ -147,6 +156,54 @@ class GitHubTrendingSyncServiceTest {
         assertThat(savedConfig.getLatestWeeklyBatch()).isEqualTo(oldBatch);
         assertThat(savedConfig.getLatestMonthlyBatch()).isEqualTo(oldBatch);
         assertThat(entryRepository.countByPeriodAndLastSeenBatch(GitHubTrendingEntry.Period.WEEKLY, oldBatch)).isEqualTo(1);
+    }
+
+    @Test
+    void monthlyFetchFailureKeepsLatestBatchesAndHomeListOnPreviousBatchAfterWeeklyRowsWereWritten() throws Exception {
+        Instant oldBatch = Instant.parse("2026-06-10T00:00:00Z");
+        GitHubTrendingConfig config = GitHubTrendingConfig.defaultConfig();
+        config.setLatestWeeklyBatch(oldBatch);
+        config.setLatestMonthlyBatch(oldBatch);
+        config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.COMPLETED);
+        configRepository.save(config);
+        entryRepository.save(entry(
+                GitHubTrendingEntry.Period.WEEKLY,
+                "owner/old-weekly",
+                "Old weekly",
+                GitHubTrendingEntry.SummaryStatus.GENERATED,
+                "旧周榜作用",
+                "旧周榜场景",
+                oldBatch
+        ));
+        entryRepository.save(entry(
+                GitHubTrendingEntry.Period.MONTHLY,
+                "owner/old-monthly",
+                "Old monthly",
+                GitHubTrendingEntry.SummaryStatus.GENERATED,
+                "旧月榜作用",
+                "旧月榜场景",
+                oldBatch
+        ));
+        scraperService.rows.put(GitHubTrendingEntry.Period.WEEKLY, List.of(
+                row(GitHubTrendingEntry.Period.WEEKLY, 1, "owner/new-weekly", "New weekly")
+        ));
+        scraperService.failures.put(GitHubTrendingEntry.Period.MONTHLY, new IOException("monthly unavailable"));
+
+        assertThatThrownBy(() -> trendingService.syncNow())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("monthly unavailable");
+
+        GitHubTrendingConfig savedConfig = configRepository.findById(GitHubTrendingConfig.SINGLETON_ID).orElseThrow();
+        assertThat(savedConfig.getLastSyncStatus()).isEqualTo(GitHubTrendingConfig.SyncStatus.FAILED);
+        assertThat(savedConfig.getLatestWeeklyBatch()).isEqualTo(oldBatch);
+        assertThat(savedConfig.getLatestMonthlyBatch()).isEqualTo(oldBatch);
+        assertThat(entryRepository.findByPeriodAndRepoFullName(
+                GitHubTrendingEntry.Period.WEEKLY,
+                "owner/new-weekly"
+        )).isPresent();
+        assertThat(trendingService.listHome(GitHubTrendingEntry.Period.WEEKLY))
+                .extracting(GitHubTrendingDto::getRepoFullName)
+                .containsExactly("owner/old-weekly");
     }
 
     private GitHubTrendingScraperService.TrendingRow row(
@@ -212,30 +269,31 @@ class GitHubTrendingSyncServiceTest {
                 GitHubTrendingEntryRepository entryRepository,
                 GitHubTrendingConfigRepository configRepository,
                 StubGitHubTrendingScraperService scraperService,
-                StubGitHubTrendingSummaryService summaryService
+                StubGitHubTrendingSummaryService summaryService,
+                TransactionTemplate transactionTemplate
         ) {
-            return new GitHubTrendingService(entryRepository, configRepository, scraperService, summaryService);
+            return new GitHubTrendingService(entryRepository, configRepository, scraperService, summaryService, transactionTemplate);
         }
     }
 
     static class StubGitHubTrendingScraperService extends GitHubTrendingScraperService {
         private final Map<GitHubTrendingEntry.Period, List<TrendingRow>> rows = new HashMap<>();
+        private final Map<GitHubTrendingEntry.Period, IOException> failures = new HashMap<>();
         private final List<String> languageFilters = new ArrayList<>();
-        private IOException failure;
 
         @Override
         public List<TrendingRow> fetch(GitHubTrendingEntry.Period period, String languageFilter) throws IOException {
             languageFilters.add(languageFilter);
-            if (failure != null) {
-                throw failure;
+            if (failures.containsKey(period)) {
+                throw failures.get(period);
             }
             return rows.getOrDefault(period, List.of());
         }
 
         void reset() {
             rows.clear();
+            failures.clear();
             languageFilters.clear();
-            failure = null;
         }
     }
 
