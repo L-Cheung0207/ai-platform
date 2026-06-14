@@ -69,7 +69,7 @@
           </section>
         </div>
 
-        <aside v-if="latestExternalSkills?.length || latestNews?.length || latestLlmLeaderboard?.length" class="home-sidebar">
+        <aside v-if="latestExternalSkills?.length || latestNews?.length || latestLlmLeaderboard?.length || hasGithubTrending" class="home-sidebar">
           <section v-if="latestExternalSkills?.length" class="home-section home-section--external home-section-news home-section-anim">
             <div class="home-section-header">
               <div>
@@ -122,6 +122,65 @@
             </ul>
           </section>
 
+          <section v-if="hasGithubTrending" class="home-section home-section--github home-section-news home-section-anim">
+            <div class="home-section-header home-trending-header">
+              <div>
+                <p class="home-section-kicker">Open Source</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="link" :size="20" />
+                  </span>
+                  GitHub Trending
+                </h2>
+                <p class="home-trending-time">{{ formattedGithubTrendingUpdatedAt }}</p>
+              </div>
+              <div class="home-trending-tabs" role="tablist" aria-label="GitHub Trending 周期">
+                <button
+                  type="button"
+                  class="home-trending-tab"
+                  :class="{ 'home-trending-tab--active': githubTrendingPeriod === 'weekly' }"
+                  role="tab"
+                  :aria-selected="githubTrendingPeriod === 'weekly'"
+                  @click="githubTrendingPeriod = 'weekly'"
+                >
+                  周榜
+                </button>
+                <button
+                  type="button"
+                  class="home-trending-tab"
+                  :class="{ 'home-trending-tab--active': githubTrendingPeriod === 'monthly' }"
+                  role="tab"
+                  :aria-selected="githubTrendingPeriod === 'monthly'"
+                  @click="githubTrendingPeriod = 'monthly'"
+                >
+                  月榜
+                </button>
+              </div>
+            </div>
+            <ul class="home-news-list">
+              <li
+                v-for="(repo, i) in currentGithubTrending"
+                :key="`${repo.period || githubTrendingPeriod}-${repo.repoFullName}`"
+                class="home-news-item"
+                :style="{ animationDelay: `${i * 35}ms` }"
+              >
+                <a
+                  :href="repo.repoUrl || `https://github.com/${repo.repoFullName}`"
+                  target="_blank"
+                  rel="noopener"
+                  class="home-news-link home-trending-link"
+                >
+                  <span class="home-news-num" :class="repo.rank <= 3 ? 'home-news-num-hot' : 'home-news-num-normal'">{{ repo.rank }}</span>
+                  <span class="home-news-copy">
+                    <span class="home-news-title">{{ repo.repoFullName }}</span>
+                    <span v-if="repo.effectCn" class="home-news-meta">{{ repo.effectCn }}</span>
+                    <span v-if="repo.scenarioCn" class="home-trending-scenario">{{ repo.scenarioCn }}</span>
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </section>
+
           <section v-if="latestNews?.length" class="home-section home-section--news home-section-news home-section-anim">
             <div class="home-section-header">
               <div>
@@ -157,7 +216,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import Icons from '../components/Icons.vue'
 import api from '../services/api'
 
@@ -166,8 +225,29 @@ const latestExternalSkills = ref([])
 const latestArticles = ref([])
 const latestNews = ref([])
 const latestLlmLeaderboard = ref([])
+const githubTrendingWeekly = ref([])
+const githubTrendingMonthly = ref([])
+const githubTrendingUpdatedAt = ref('')
+const githubTrendingPeriod = ref('weekly')
 const loading = ref(true)
 const error = ref('')
+
+const hasGithubTrending = computed(() =>
+  githubTrendingWeekly.value.length > 0 || githubTrendingMonthly.value.length > 0
+)
+
+const currentGithubTrending = computed(() =>
+  githubTrendingPeriod.value === 'weekly'
+    ? githubTrendingWeekly.value
+    : githubTrendingMonthly.value
+)
+
+const formattedGithubTrendingUpdatedAt = computed(() => {
+  if (!githubTrendingUpdatedAt.value) return '暂无同步记录'
+  const date = new Date(githubTrendingUpdatedAt.value)
+  if (Number.isNaN(date.getTime())) return '暂无同步记录'
+  return date.toLocaleString('zh-CN', { hour12: false })
+})
 
 onMounted(async () => {
   try {
@@ -177,6 +257,9 @@ onMounted(async () => {
     latestArticles.value = data.latestArticles || []
     latestNews.value = (data.latestNews || []).slice(0, 10)
     latestLlmLeaderboard.value = data.latestLlmLeaderboard || []
+    githubTrendingWeekly.value = data.githubTrendingWeekly || []
+    githubTrendingMonthly.value = data.githubTrendingMonthly || []
+    githubTrendingUpdatedAt.value = data.githubTrendingUpdatedAt || ''
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
@@ -366,6 +449,12 @@ function lifecycleLabel(value) {
   --home-section-accent: #EBC050;
   --home-section-soft: rgba(235, 192, 80, 0.18);
   --home-section-text: #b58105;
+}
+
+.home-section--github {
+  --home-section-accent: #24292f;
+  --home-section-soft: rgba(36, 41, 47, 0.09);
+  --home-section-text: #24292f;
 }
 
 .home-section--news {
@@ -658,6 +747,81 @@ function lifecycleLabel(value) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.home-trending-header {
+  align-items: flex-start;
+}
+
+.home-trending-time {
+  margin: 0.35rem 0 0;
+  color: #94a3b8;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.home-trending-tabs {
+  flex-shrink: 0;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.18rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.home-trending-tab {
+  min-width: 3rem;
+  min-height: 1.8rem;
+  padding: 0.34rem 0.62rem;
+  border: 0;
+  border-radius: 6px;
+  color: #64748b;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 760;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.home-trending-tab:hover,
+.home-trending-tab--active {
+  color: #0f172a;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.home-trending-link {
+  min-width: 0;
+}
+
+.home-trending-scenario {
+  display: block;
+  margin-top: 0.28rem;
+  color: #475569;
+  font-size: 0.76rem;
+  line-height: 1.42;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 420px) {
+  .home-trending-header {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .home-trending-tabs {
+    width: 100%;
+  }
+
+  .home-trending-tab {
+    flex: 1;
+  }
 }
 
 .home-loading,
