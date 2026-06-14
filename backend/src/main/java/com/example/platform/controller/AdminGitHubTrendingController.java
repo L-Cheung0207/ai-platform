@@ -9,13 +9,10 @@ import com.example.platform.dto.GitHubTrendingUpdateRequest;
 import com.example.platform.entity.GitHubTrendingConfig;
 import com.example.platform.entity.GitHubTrendingEntry;
 import com.example.platform.repository.GitHubTrendingConfigRepository;
-import com.example.platform.repository.GitHubTrendingEntryRepository;
 import com.example.platform.service.GitHubTrendingService;
-import com.example.platform.service.GitHubTrendingSummaryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,17 +30,11 @@ public class AdminGitHubTrendingController {
 
     private final GitHubTrendingService gitHubTrendingService;
     private final GitHubTrendingConfigRepository configRepository;
-    private final GitHubTrendingEntryRepository entryRepository;
-    private final GitHubTrendingSummaryService summaryService;
 
     public AdminGitHubTrendingController(GitHubTrendingService gitHubTrendingService,
-                                         GitHubTrendingConfigRepository configRepository,
-                                         GitHubTrendingEntryRepository entryRepository,
-                                         GitHubTrendingSummaryService summaryService) {
+                                         GitHubTrendingConfigRepository configRepository) {
         this.gitHubTrendingService = gitHubTrendingService;
         this.configRepository = configRepository;
-        this.entryRepository = entryRepository;
-        this.summaryService = summaryService;
     }
 
     @GetMapping("/status")
@@ -55,7 +46,7 @@ public class AdminGitHubTrendingController {
 
     @GetMapping
     public ApiResponse<List<GitHubTrendingDto>> list(@RequestParam(defaultValue = "WEEKLY") GitHubTrendingEntry.Period period) {
-        return ApiResponse.ok(gitHubTrendingService.listHome(period));
+        return ApiResponse.ok(gitHubTrendingService.listAdmin(period));
     }
 
     @PutMapping("/{id}")
@@ -76,19 +67,8 @@ public class AdminGitHubTrendingController {
     }
 
     @PostMapping("/{id}/regenerate-summary")
-    @Transactional
     public ApiResponse<GitHubTrendingDto> regenerateSummary(@PathVariable Long id) {
-        GitHubTrendingEntry entry = entryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("GitHub trending entry not found: " + id));
-        GitHubTrendingSummaryService.SummaryResult result = summaryService.generate(entry);
-        entry.setEffectCn(result.effectCn());
-        entry.setScenarioCn(result.scenarioCn());
-        entry.setSummaryStatus(switch (result.status()) {
-            case GENERATED -> GitHubTrendingEntry.SummaryStatus.GENERATED;
-            case FAILED -> GitHubTrendingEntry.SummaryStatus.FAILED;
-            case NEEDS_REVIEW -> GitHubTrendingEntry.SummaryStatus.NEEDS_REVIEW;
-        });
-        return ApiResponse.ok(GitHubTrendingDto.fromEntity(entryRepository.save(entry)));
+        return ApiResponse.ok(gitHubTrendingService.regenerateSummary(id));
     }
 
     @GetMapping("/config")

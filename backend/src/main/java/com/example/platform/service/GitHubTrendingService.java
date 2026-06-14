@@ -66,6 +66,21 @@ public class GitHubTrendingService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<GitHubTrendingDto> listAdmin(GitHubTrendingEntry.Period period) {
+        GitHubTrendingConfig config = findConfigOrDefault();
+        Instant batch = period == GitHubTrendingEntry.Period.MONTHLY
+                ? config.getLatestMonthlyBatch()
+                : config.getLatestWeeklyBatch();
+        if (batch == null) {
+            return List.of();
+        }
+        return entryRepository.findLatestByPeriod(period, batch, PageRequest.of(0, 100))
+                .stream()
+                .map(GitHubTrendingDto::fromEntity)
+                .toList();
+    }
+
     @Transactional
     public GitHubTrendingConfigDto getConfig() {
         return GitHubTrendingConfigDto.fromEntity(getOrCreateConfig());
@@ -92,6 +107,14 @@ public class GitHubTrendingService {
         entry.setSummaryStatus(request.getSummaryStatus() == null
                 ? GitHubTrendingEntry.SummaryStatus.MANUAL
                 : request.getSummaryStatus());
+        return GitHubTrendingDto.fromEntity(entryRepository.save(entry));
+    }
+
+    @Transactional
+    public GitHubTrendingDto regenerateSummary(Long id) {
+        GitHubTrendingEntry entry = entryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("GitHub trending entry not found: " + id));
+        applyGeneratedSummary(entry);
         return GitHubTrendingDto.fromEntity(entryRepository.save(entry));
     }
 
