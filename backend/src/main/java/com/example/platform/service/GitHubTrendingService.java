@@ -161,12 +161,12 @@ public class GitHubTrendingService {
         try {
             syncPeriodFetchedRows(
                     GitHubTrendingEntry.Period.WEEKLY,
-                    scraperService.fetch(GitHubTrendingEntry.Period.WEEKLY, config.getLanguageFilter()),
+                    filterRows(scraperService.fetch(GitHubTrendingEntry.Period.WEEKLY, config.getLanguageFilter()), config.getKeywordFilter()),
                     batch
             );
             syncPeriodFetchedRows(
                     GitHubTrendingEntry.Period.MONTHLY,
-                    scraperService.fetch(GitHubTrendingEntry.Period.MONTHLY, config.getLanguageFilter()),
+                    filterRows(scraperService.fetch(GitHubTrendingEntry.Period.MONTHLY, config.getLanguageFilter()), config.getKeywordFilter()),
                     batch
             );
             GitHubTrendingConfig completed = markSyncCompleted(batch);
@@ -259,6 +259,36 @@ public class GitHubTrendingService {
         });
     }
 
+    private List<GitHubTrendingScraperService.TrendingRow> filterRows(
+            List<GitHubTrendingScraperService.TrendingRow> rows,
+            String keywordFilter
+    ) {
+        String normalized = blankToNull(keywordFilter);
+        if (normalized == null) {
+            return rows;
+        }
+        List<String> keywords = List.of(normalized.toLowerCase().split(","))
+                .stream()
+                .map(String::trim)
+                .filter(keyword -> !keyword.isBlank())
+                .toList();
+        if (keywords.isEmpty()) {
+            return rows;
+        }
+        return rows.stream()
+                .filter(row -> keywords.stream().anyMatch(keyword -> rowMatchesKeyword(row, keyword)))
+                .toList();
+    }
+
+    private boolean rowMatchesKeyword(GitHubTrendingScraperService.TrendingRow row, String keyword) {
+        String text = String.join(" ",
+                valueOrEmpty(row.repoFullName()),
+                valueOrEmpty(row.description()),
+                valueOrEmpty(row.language())
+        ).toLowerCase();
+        return text.contains(keyword);
+    }
+
     private GitHubTrendingConfig getOrCreateConfig() {
         return configRepository.findById(GitHubTrendingConfig.SINGLETON_ID)
                 .orElseGet(() -> configRepository.save(GitHubTrendingConfig.defaultConfig()));
@@ -274,6 +304,10 @@ public class GitHubTrendingService {
             return null;
         }
         return value.trim();
+    }
+
+    private String valueOrEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private String limit(String value, int maxLength) {

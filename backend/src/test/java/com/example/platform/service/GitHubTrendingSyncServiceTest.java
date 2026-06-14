@@ -112,6 +112,37 @@ class GitHubTrendingSyncServiceTest {
     }
 
     @Test
+    void syncNowFiltersFetchedRowsByKeywordConfig() throws Exception {
+        GitHubTrendingConfig config = GitHubTrendingConfig.defaultConfig();
+        config.setKeywordFilter("agent,llm");
+        configRepository.save(config);
+        scraperService.rows.put(GitHubTrendingEntry.Period.WEEKLY, List.of(
+                row(GitHubTrendingEntry.Period.WEEKLY, 1, "owner/cloud-agent", "Cloud coding assistant"),
+                row(GitHubTrendingEntry.Period.WEEKLY, 2, "owner/database", "Database migration toolkit")
+        ));
+        scraperService.rows.put(GitHubTrendingEntry.Period.MONTHLY, List.of(
+                row(GitHubTrendingEntry.Period.MONTHLY, 1, "owner/vector-search", "LLM retrieval toolkit"),
+                row(GitHubTrendingEntry.Period.MONTHLY, 2, "owner/css-kit", "CSS utilities")
+        ));
+
+        trendingService.syncNow();
+
+        GitHubTrendingConfig savedConfig = configRepository.findById(GitHubTrendingConfig.SINGLETON_ID).orElseThrow();
+        assertThat(entryRepository.findLatestByPeriod(
+                GitHubTrendingEntry.Period.WEEKLY,
+                savedConfig.getLatestWeeklyBatch(),
+                PageRequest.of(0, 10)
+        )).extracting(GitHubTrendingEntry::getRepoFullName)
+                .containsExactly("owner/cloud-agent");
+        assertThat(entryRepository.findLatestByPeriod(
+                GitHubTrendingEntry.Period.MONTHLY,
+                savedConfig.getLatestMonthlyBatch(),
+                PageRequest.of(0, 10)
+        )).extracting(GitHubTrendingEntry::getRepoFullName)
+                .containsExactly("owner/vector-search");
+    }
+
+    @Test
     void getConfigCreatesDefaultWhenMissing() {
         GitHubTrendingConfigDto dto = trendingService.getConfig();
 
