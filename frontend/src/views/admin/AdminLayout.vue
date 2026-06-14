@@ -35,14 +35,14 @@
       </div>
     </header>
 
-    <div class="flex flex-1 min-h-0">
+    <div class="admin-layout__body flex flex-1 min-h-0">
       <!-- 侧边栏 -->
       <aside
-        class="w-56 shrink-0 bg-[var(--bg-card)] border-r border-[var(--border-color)] flex flex-col overflow-hidden"
+        class="admin-layout__sidebar w-56 shrink-0 bg-[var(--bg-card)] border-r border-[var(--border-color)] flex flex-col overflow-hidden"
         role="navigation"
         aria-label="管理后台菜单"
       >
-        <nav class="py-4 px-3 overflow-y-auto">
+        <nav class="admin-layout__nav py-4 px-3 overflow-y-auto">
           <div
             v-for="(group, index) in menuGroups"
             :key="group.title"
@@ -68,7 +68,7 @@
       </aside>
 
       <!-- 主内容区 -->
-      <main class="flex-1 p-6 overflow-auto min-w-0">
+      <main class="admin-layout__main flex-1 p-6 overflow-auto min-w-0">
         <router-view />
       </main>
     </div>
@@ -185,6 +185,29 @@ const menuGroups = [
 }
 .admin-nav-item--active .admin-nav-item__icon {
   @apply text-primary;
+}
+
+@media (max-width: 768px) {
+  .admin-layout__body {
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .admin-layout__sidebar {
+    width: 100%;
+    max-height: 42vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-color);
+    overflow: auto;
+  }
+
+  .admin-layout__nav {
+    overflow: auto;
+  }
+
+  .admin-layout__main {
+    padding: 16px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

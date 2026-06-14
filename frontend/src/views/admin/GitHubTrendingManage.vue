@@ -223,7 +223,6 @@ async function refreshAll() {
 
 async function saveConfig() {
   configSaving.value = true
-  error.value = ''
   try {
     await api.put('/admin/github-trending/config', {
       languageFilter: configForm.languageFilter || null,
@@ -233,8 +232,7 @@ async function saveConfig() {
     ElMessage.success('配置已保存')
     await loadConfig()
   } catch (e) {
-    error.value = e.message || '配置保存失败'
-    ElMessage.error(error.value)
+    ElMessage.error(e.message || '配置保存失败')
   } finally {
     configSaving.value = false
   }
@@ -242,15 +240,13 @@ async function saveConfig() {
 
 async function startSync() {
   syncStarting.value = true
-  error.value = ''
   try {
     statusData.value = await api.post('/admin/github-trending/sync')
     ElMessage.success('同步任务已启动')
     await fetchStatus()
     if (isRunning.value) startStatusPolling()
   } catch (e) {
-    error.value = e.message || '启动同步失败'
-    ElMessage.error(error.value)
+    ElMessage.error(e.message || '启动同步失败')
     await fetchStatus()
   } finally {
     if (!isRunning.value) syncStarting.value = false
@@ -260,7 +256,6 @@ async function startSync() {
 async function saveRow(row) {
   const draft = rowDraft(row)
   setSaving(row.id, true)
-  error.value = ''
   try {
     const updated = await api.put(`/admin/github-trending/${row.id}`, {
       effectCn: draft.effectCn,
@@ -270,8 +265,7 @@ async function saveRow(row) {
     syncDrafts(rows.value)
     ElMessage.success('条目已保存')
   } catch (e) {
-    error.value = e.message || '条目保存失败'
-    ElMessage.error(error.value)
+    ElMessage.error(e.message || '条目保存失败')
   } finally {
     setSaving(row.id, false)
   }
@@ -289,15 +283,13 @@ async function regenerateRow(row) {
   }
 
   setRegenerating(row.id, true)
-  error.value = ''
   try {
     const updated = await api.post(`/admin/github-trending/${row.id}/regenerate-summary`)
     Object.assign(row, updated)
     syncDrafts(rows.value)
     ElMessage.success('摘要已重生成')
   } catch (e) {
-    error.value = e.message || '重生成失败'
-    ElMessage.error(error.value)
+    ElMessage.error(e.message || '重生成失败')
   } finally {
     setRegenerating(row.id, false)
   }
