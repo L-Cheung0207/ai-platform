@@ -30,6 +30,8 @@ public class CreateSkillRequest {
     @Size(max = 500_000)
     private String contentMd;
 
+    private String skillPackageFiles;
+
     @Size(max = 1000)
     private String sourceRepositoryUrl;
 
@@ -100,6 +102,8 @@ public class CreateSkillRequest {
     public void setCloneCommand(String cloneCommand) { this.cloneCommand = cloneCommand; }
     public String getContentMd() { return contentMd; }
     public void setContentMd(String contentMd) { this.contentMd = contentMd; }
+    public String getSkillPackageFiles() { return skillPackageFiles; }
+    public void setSkillPackageFiles(String skillPackageFiles) { this.skillPackageFiles = skillPackageFiles; }
     public String getSourceRepositoryUrl() { return sourceRepositoryUrl; }
     public void setSourceRepositoryUrl(String sourceRepositoryUrl) { this.sourceRepositoryUrl = sourceRepositoryUrl; }
     public String getSkillDirectory() { return skillDirectory; }

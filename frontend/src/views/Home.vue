@@ -47,6 +47,63 @@
             </div>
           </section>
 
+          <section v-if="hasGithubTrending" class="home-section home-section--github home-section-anim">
+            <div class="home-section-header home-trending-header">
+              <div>
+                <p class="home-section-kicker">Open Source</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="link" :size="20" />
+                  </span>
+                  GitHub Trending
+                </h2>
+                <p class="home-trending-time">{{ formattedGithubTrendingUpdatedAt }}</p>
+              </div>
+              <div class="home-trending-tabs" role="tablist" aria-label="GitHub Trending 周期">
+                <button
+                  type="button"
+                  class="home-trending-tab"
+                  :class="{ 'home-trending-tab--active': githubTrendingPeriod === 'weekly' }"
+                  role="tab"
+                  :aria-selected="githubTrendingPeriod === 'weekly'"
+                  @click="githubTrendingPeriod = 'weekly'"
+                >
+                  周榜
+                </button>
+                <button
+                  type="button"
+                  class="home-trending-tab"
+                  :class="{ 'home-trending-tab--active': githubTrendingPeriod === 'monthly' }"
+                  role="tab"
+                  :aria-selected="githubTrendingPeriod === 'monthly'"
+                  @click="githubTrendingPeriod = 'monthly'"
+                >
+                  月榜
+                </button>
+              </div>
+            </div>
+            <div class="home-trending-grid">
+              <a
+                v-for="(repo, i) in currentGithubTrending"
+                :key="`${repo.period || githubTrendingPeriod}-${repo.repoFullName}`"
+                :href="repo.repoUrl || `https://github.com/${repo.repoFullName}`"
+                target="_blank"
+                rel="noopener"
+                class="home-trending-card"
+                :style="{ animationDelay: `${i * 35}ms` }"
+              >
+                <span class="home-trending-rank" :class="repo.rank <= 3 ? 'home-trending-rank--hot' : 'home-trending-rank--normal'">
+                  {{ repo.rank }}
+                </span>
+                <span class="home-trending-copy">
+                  <span class="home-trending-repo">{{ repo.repoFullName }}</span>
+                  <span v-if="repo.effectCn" class="home-trending-effect">{{ repo.effectCn }}</span>
+                  <span v-if="repo.scenarioCn" class="home-trending-scenario">{{ repo.scenarioCn }}</span>
+                </span>
+              </a>
+            </div>
+          </section>
+
           <section class="home-section home-section--knowledge home-section-anim">
             <div class="home-section-header">
               <div>
@@ -67,35 +124,31 @@
             </ul>
             <p v-else-if="!loading" class="home-empty">暂无知识内容</p>
           </section>
-        </div>
 
-        <aside v-if="latestExternalSkills?.length || latestNews?.length || latestLlmLeaderboard?.length" class="home-sidebar">
-          <section v-if="latestExternalSkills?.length" class="home-section home-section--external home-section-news home-section-anim">
+          <section class="home-section home-section--forum home-section-anim">
             <div class="home-section-header">
               <div>
-                <p class="home-section-kicker">Community</p>
+                <p class="home-section-kicker">Forum</p>
                 <h2 class="home-section-title">
                   <span class="home-section-icon">
-                    <Icons name="link" :size="20" />
+                    <Icons name="document" :size="20" />
                   </span>
-                  外部 Skill
+                  技术交流论坛
                 </h2>
               </div>
-              <router-link to="/skills" class="home-more">更多</router-link>
+              <router-link to="/forum" class="home-more">进入</router-link>
             </div>
-            <ul class="home-news-list">
-              <li v-for="(s, i) in latestExternalSkills" :key="s.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
-                <router-link :to="'/external-skills/' + s.id" class="home-news-link">
-                  <span class="home-news-num home-news-num-normal">{{ i + 1 }}</span>
-                  <span class="home-news-copy">
-                    <span class="home-news-title">{{ s.name }}</span>
-                    <span v-if="s.description" class="home-news-meta">{{ s.description }}</span>
-                  </span>
-                </router-link>
-              </li>
-            </ul>
+            <router-link to="/forum" class="home-forum-card">
+              <span class="home-forum-card__mark">讨论场</span>
+              <span class="home-forum-card__copy">
+                <strong>把问题、方案和经验留在一个可以搜索、回复、采纳和收藏的地方。</strong>
+                <small>适合提问求助、方案讨论、踩坑复盘和最佳实践沉淀。</small>
+              </span>
+            </router-link>
           </section>
+        </div>
 
+        <aside v-if="latestNews?.length || latestLlmLeaderboard?.length" class="home-sidebar">
           <section v-if="latestLlmLeaderboard?.length" class="home-section home-section--leaderboard home-section-news home-section-anim">
             <div class="home-section-header">
               <div>
@@ -157,26 +210,51 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import Icons from '../components/Icons.vue'
 import api from '../services/api'
 
 const latestSkills = ref([])
-const latestExternalSkills = ref([])
 const latestArticles = ref([])
 const latestNews = ref([])
 const latestLlmLeaderboard = ref([])
+const githubTrendingWeekly = ref([])
+const githubTrendingMonthly = ref([])
+const githubTrendingUpdatedAt = ref('')
+const githubTrendingPeriod = ref('weekly')
 const loading = ref(true)
 const error = ref('')
+
+const hasGithubTrending = computed(() =>
+  githubTrendingWeekly.value.length > 0 || githubTrendingMonthly.value.length > 0
+)
+
+const currentGithubTrending = computed(() =>
+  githubTrendingPeriod.value === 'weekly'
+    ? githubTrendingWeekly.value
+    : githubTrendingMonthly.value
+)
+
+const formattedGithubTrendingUpdatedAt = computed(() => {
+  if (!githubTrendingUpdatedAt.value) return '暂无同步记录'
+  const date = new Date(githubTrendingUpdatedAt.value)
+  if (Number.isNaN(date.getTime())) return '暂无同步记录'
+  return date.toLocaleString('zh-CN', { hour12: false })
+})
 
 onMounted(async () => {
   try {
     const data = await api.get('/home')
     latestSkills.value = data.latestSkills || []
-    latestExternalSkills.value = data.latestExternalSkills || []
     latestArticles.value = data.latestArticles || []
     latestNews.value = (data.latestNews || []).slice(0, 10)
     latestLlmLeaderboard.value = data.latestLlmLeaderboard || []
+    githubTrendingWeekly.value = data.githubTrendingWeekly || []
+    githubTrendingMonthly.value = data.githubTrendingMonthly || []
+    githubTrendingUpdatedAt.value = data.githubTrendingUpdatedAt || ''
+    if (!githubTrendingWeekly.value.length && githubTrendingMonthly.value.length) {
+      githubTrendingPeriod.value = 'monthly'
+    }
   } catch (e) {
     error.value = e.message || '加载失败'
   } finally {
@@ -356,16 +434,22 @@ function lifecycleLabel(value) {
   --home-section-text: #2E68B8;
 }
 
-.home-section--external {
-  --home-section-accent: #16a34a;
-  --home-section-soft: rgba(22, 163, 74, 0.1);
-  --home-section-text: #15803d;
+.home-section--forum {
+  --home-section-accent: #14b8a6;
+  --home-section-soft: rgba(20, 184, 166, 0.12);
+  --home-section-text: #0f766e;
 }
 
 .home-section--leaderboard {
   --home-section-accent: #EBC050;
   --home-section-soft: rgba(235, 192, 80, 0.18);
   --home-section-text: #b58105;
+}
+
+.home-section--github {
+  --home-section-accent: #24292f;
+  --home-section-soft: rgba(36, 41, 47, 0.09);
+  --home-section-text: #24292f;
 }
 
 .home-section--news {
@@ -542,6 +626,58 @@ function lifecycleLabel(value) {
   background: #f8fafc;
 }
 
+.home-forum-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 96px;
+  padding: 1rem;
+  border-radius: 18px;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid rgba(13, 148, 136, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(240, 253, 250, 0.96), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.home-forum-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(13, 148, 136, 0.32);
+  box-shadow: 0 18px 32px rgba(13, 148, 136, 0.12);
+}
+
+.home-forum-card__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  color: white;
+  font-weight: 800;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.home-forum-card__copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.home-forum-card__copy strong {
+  color: #0f172a;
+  line-height: 1.55;
+}
+
+.home-forum-card__copy small {
+  color: #64748b;
+  line-height: 1.5;
+}
+
 .home-list {
   list-style: none;
   padding: 0;
@@ -660,6 +796,160 @@ function lifecycleLabel(value) {
   white-space: nowrap;
 }
 
+.home-trending-header {
+  align-items: flex-start;
+}
+
+.home-trending-time {
+  margin: 0.35rem 0 0;
+  color: #94a3b8;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.home-trending-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.home-trending-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.82rem;
+  min-height: 9rem;
+  padding: 1rem;
+  border: 1px solid rgba(203, 213, 225, 0.84);
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.98));
+  animation: home-fade-up 0.4s ease-out both;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.home-trending-card:hover {
+  border-color: rgba(36, 41, 47, 0.24);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.home-trending-rank {
+  flex-shrink: 0;
+  width: 2.35rem;
+  height: 2.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 780;
+}
+
+.home-trending-rank--hot {
+  color: #ffffff;
+  background: #24292f;
+  box-shadow: 0 8px 18px rgba(36, 41, 47, 0.18);
+}
+
+.home-trending-rank--normal {
+  color: #475569;
+  background: #eef2f7;
+}
+
+.home-trending-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.48rem;
+}
+
+.home-trending-repo {
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 720;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.home-trending-effect {
+  color: #334155;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.home-trending-tabs {
+  flex-shrink: 0;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.18rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.home-trending-tab {
+  min-width: 3rem;
+  min-height: 1.8rem;
+  padding: 0.34rem 0.62rem;
+  border: 0;
+  border-radius: 6px;
+  color: #64748b;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 760;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.home-trending-tab:hover,
+.home-trending-tab--active {
+  color: #0f172a;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
+.home-trending-scenario {
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 420px) {
+  .home-trending-header {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .home-trending-tabs {
+    width: 100%;
+  }
+
+  .home-trending-tab {
+    flex: 1;
+  }
+}
+
+@media (max-width: 639px) {
+  .home-trending-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-trending-card {
+    min-height: auto;
+  }
+}
+
 .home-loading,
 .home-empty {
   text-align: center;
@@ -685,11 +975,13 @@ function lifecycleLabel(value) {
 @media (prefers-reduced-motion: reduce) {
   .home-section,
   .home-card,
+  .home-trending-card,
   .home-list-item,
   .home-news-item {
     animation: none !important;
   }
-  .home-card:hover {
+  .home-card:hover,
+  .home-trending-card:hover {
     transform: none;
   }
 }

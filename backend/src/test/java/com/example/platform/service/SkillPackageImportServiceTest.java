@@ -65,6 +65,7 @@ class SkillPackageImportServiceTest {
 
     @BeforeEach
     void setUp() {
+        gitLabSkillPublishService = new StubGitLabSkillPublishService();
         SkillService skillService = new SkillService(skillRepository, tagRepository, userRepository, gitLabSkillPublishService);
         SkillGovernanceService skillGovernanceService = new SkillGovernanceService(
                 skillRepository,
@@ -72,9 +73,9 @@ class SkillPackageImportServiceTest {
                 skillFeedbackRepository,
                 skillUsageEventRepository,
                 skillOperationReportRepository,
-                userRepository
+                userRepository,
+                gitLabSkillPublishService
         );
-        gitLabSkillPublishService = new StubGitLabSkillPublishService();
         importService = new SkillPackageImportService(skillService, skillGovernanceService, skillRepository, gitLabSkillPublishService);
     }
 
@@ -143,7 +144,45 @@ class SkillPackageImportServiceTest {
     }
 
     @Test
-    void importPackagePublishesToGitLabWhenEnabledAndRepositorySourceMissing() throws Exception {
+    void importPackageUpdatesExistingSkillWhenDirectoryAlreadyExists() throws Exception {
+        MockMultipartFile file = zipFile("sample-skill.zip", packageEntries(true, true, "2.0.0"));
+        Skill existing = new Skill();
+        existing.setId(88L);
+        existing.setName("Old Sample Skill");
+        existing.setDescription("Old description");
+        existing.setCloneCommand("git clone https://git.example.com/old/sample.git");
+        existing.setContentMd("old content");
+        existing.setSkillDirectory("sample-skill");
+        existing.setSourceRepositoryUrl("https://git.example.com/old/sample");
+        existing.setUploader(user(1L, "admin"));
+        existing.setCreationSource(CreationSource.SKILL_CREATOR_PACKAGE);
+        existing.setLifecycleStatus(Skill.LifecycleStatus.CANDIDATE);
+        existing.setTemplateValidationStatus(Skill.TemplateValidationStatus.PASSED);
+        AtomicReference<Skill> savedSkill = new AtomicReference<>(existing);
+        when(skillRepository.findFirstBySkillDirectoryIgnoreCase("sample-skill")).thenReturn(Optional.of(existing));
+        when(tagRepository.findByNameIgnoreCase(anyString())).thenReturn(Optional.empty());
+        when(tagRepository.save(any(Tag.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(skillRepository.save(any(Skill.class))).thenAnswer(invocation -> {
+            Skill skill = invocation.getArgument(0);
+            savedSkill.set(skill);
+            return skill;
+        });
+        when(skillRepository.findById(88L)).thenAnswer(invocation -> Optional.of(savedSkill.get()));
+
+        var result = importService.importPackage(file, 1L);
+
+        assertThat(result.skill().getId()).isEqualTo(88L);
+        assertThat(result.packageValidation().passed()).isTrue();
+        assertThat(result.assetValidation().passed()).isTrue();
+        assertThat(result.skill().getName()).isEqualTo("Sample Skill");
+        assertThat(savedSkill.get().getVersion()).isEqualTo("2.0.0");
+        assertThat(savedSkill.get().getDescription()).isEqualTo("Sample skill package");
+        assertThat(savedSkill.get().getCreationSource()).isEqualTo(CreationSource.SKILL_CREATOR_PACKAGE);
+        assertThat(savedSkill.get().getTemplateValidationStatus()).isEqualTo(Skill.TemplateValidationStatus.PASSED);
+    }
+
+    @Test
+    void importPackageStoresPackageFilesButDefersGitLabPublishUntilReviewPasses() throws Exception {
         MockMultipartFile file = zipFile("sample-skill.zip", packageEntries(true, false));
         AtomicReference<Skill> savedSkill = new AtomicReference<>();
         gitLabSkillPublishService.enabled = true;
@@ -173,11 +212,13 @@ class SkillPackageImportServiceTest {
 
         assertThat(result.skill().getId()).isEqualTo(43L);
         assertThat(result.packageValidation().passed()).isTrue();
-        assertThat(result.gitLabPublication().status()).isEqualTo("PUBLISHED");
-        assertThat(savedSkill.get().getSourceRepositoryUrl()).isEqualTo("https://git.example.com/platform/ai-skills");
-        assertThat(savedSkill.get().getCloneCommand()).isEqualTo("git clone https://git.example.com/platform/ai-skills.git");
-        assertThat(savedSkill.get().getReviewNotes()).contains("GitLab MR：https://git.example.com/platform/ai-skills/-/merge_requests/7");
-        assertThat(savedSkill.get().getReviewNotes()).contains("GitLab 路径：skills/sample-skill");
+        assertThat(result.gitLabPublication().status()).isEqualTo("DISABLED");
+        assertThat(result.gitLabPublication().message()).contains("评审通过后");
+        assertThat(gitLabSkillPublishService.publishCalls).isZero();
+        assertThat(savedSkill.get().getSourceRepositoryUrl()).isNull();
+        assertThat(savedSkill.get().getCloneCommand()).isEqualTo("git clone <待评审后生成的仓库地址>");
+        assertThat(savedSkill.get().getReviewNotes()).doesNotContain("GitLab MR");
+        assertThat(savedSkill.get().getSkillPackageFiles()).contains("references/checklist.md");
     }
 
     private MockMultipartFile zipFile(String filename, Map<String, String> entries) throws IOException {
@@ -197,6 +238,10 @@ class SkillPackageImportServiceTest {
     }
 
     private Map<String, String> packageEntries(boolean includeQuickValidateEvidence, boolean includeSourceRepository) {
+        return packageEntries(includeQuickValidateEvidence, includeSourceRepository, "1.0.0");
+    }
+
+    private Map<String, String> packageEntries(boolean includeQuickValidateEvidence, boolean includeSourceRepository, String version) {
         Map<String, String> entries = new LinkedHashMap<>();
         entries.put("sample-skill/SKILL.md", """
                 ---
@@ -205,6 +250,7 @@ class SkillPackageImportServiceTest {
                 %s
                 skillCategory: code_review
                 buildPriority: P0
+                version: %s
                 ---
 
                 # Sample Skill
@@ -231,7 +277,7 @@ class SkillPackageImportServiceTest {
                 references/checklist.md
                 """.formatted(includeSourceRepository
                 ? "sourceRepositoryUrl: https://git.example.com/ai-skills/sample-skill"
-                : ""));
+                : "", version));
         entries.put("sample-skill/agents/openai.yaml", "name: sample-skill\n");
         entries.put("sample-skill/references/checklist.md", "# Checklist\n");
         if (includeQuickValidateEvidence) {
@@ -251,6 +297,7 @@ class SkillPackageImportServiceTest {
     private static class StubGitLabSkillPublishService extends GitLabSkillPublishService {
         private boolean enabled;
         private SkillGitLabPublishResultDto result = SkillGitLabPublishResultDto.disabled("GitLab 自动发布未启用");
+        private int publishCalls;
 
         private StubGitLabSkillPublishService() {
             super(new ObjectMapper(), false, "", "", "", "", "main", "skills", "skill");
@@ -263,6 +310,7 @@ class SkillPackageImportServiceTest {
 
         @Override
         public SkillGitLabPublishResultDto publishPackage(String skillDirectory, String skillName, Map<String, byte[]> files) {
+            publishCalls++;
             return result;
         }
     }

@@ -33,10 +33,6 @@ app:
       enabled: ${SCRAPER_MCP_ENABLED:true}
       headless: ${SCRAPER_MCP_HEADLESS:true}
       max-pages: ${SCRAPER_MCP_MAX_PAGES:232}
-    external-skills:
-      enabled: ${SCRAPER_EXTERNAL_SKILLS_ENABLED:true}
-      headless: ${SCRAPER_EXTERNAL_SKILLS_HEADLESS:true}
-      max-pages: ${SCRAPER_EXTERNAL_SKILLS_MAX_PAGES:341}
     llm-leaderboard:
       enabled: ${SCRAPER_LLM_LEADERBOARD_ENABLED:true}
       headless: ${SCRAPER_LLM_LEADERBOARD_HEADLESS:true}

@@ -142,8 +142,7 @@ async function submitReview() {
     })
     ElMessage.success('评审已保存')
     emit('saved')
-    resetForm()
-    await loadReviews()
+    visible.value = false
   } catch (e) {
     error.value = e.message || '保存评审失败'
   } finally {

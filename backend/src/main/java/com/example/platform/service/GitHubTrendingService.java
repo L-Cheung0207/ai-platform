@@ -1,0 +1,319 @@
+package com.example.platform.service;
+
+import com.example.platform.dto.GitHubTrendingConfigDto;
+import com.example.platform.dto.GitHubTrendingConfigRequest;
+import com.example.platform.dto.GitHubTrendingDto;
+import com.example.platform.dto.GitHubTrendingStatusDto;
+import com.example.platform.dto.GitHubTrendingUpdateRequest;
+import com.example.platform.entity.GitHubTrendingConfig;
+import com.example.platform.entity.GitHubTrendingEntry;
+import com.example.platform.repository.GitHubTrendingConfigRepository;
+import com.example.platform.repository.GitHubTrendingEntryRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+@Service
+public class GitHubTrendingService {
+
+    private final GitHubTrendingEntryRepository entryRepository;
+    private final GitHubTrendingConfigRepository configRepository;
+    private final GitHubTrendingScraperService scraperService;
+    private final GitHubTrendingSummaryService summaryService;
+    private final TransactionTemplate transactionTemplate;
+    private final TaskExecutor scraperTaskExecutor;
+    private final AtomicBoolean syncRunning = new AtomicBoolean(false);
+
+    public static class SyncAlreadyRunningException extends RuntimeException {
+        public SyncAlreadyRunningException() {
+            super("GitHub Trending sync is already running");
+        }
+    }
+
+    public GitHubTrendingService(GitHubTrendingEntryRepository entryRepository,
+                                 GitHubTrendingConfigRepository configRepository,
+                                 GitHubTrendingScraperService scraperService,
+                                 GitHubTrendingSummaryService summaryService,
+                                 TransactionTemplate transactionTemplate,
+                                 @Qualifier("scraperTaskExecutor") TaskExecutor scraperTaskExecutor) {
+        this.entryRepository = entryRepository;
+        this.configRepository = configRepository;
+        this.scraperService = scraperService;
+        this.summaryService = summaryService;
+        this.transactionTemplate = transactionTemplate;
+        this.scraperTaskExecutor = scraperTaskExecutor;
+    }
+
+    @Transactional(readOnly = true)
+    public List<GitHubTrendingDto> listHome(GitHubTrendingEntry.Period period) {
+        GitHubTrendingConfig config = findConfigOrDefault();
+        Instant batch = period == GitHubTrendingEntry.Period.MONTHLY
+                ? config.getLatestMonthlyBatch()
+                : config.getLatestWeeklyBatch();
+        if (batch == null) {
+            return List.of();
+        }
+        return entryRepository.findLatestByPeriod(period, batch, PageRequest.of(0, config.getHomeDisplayCount()))
+                .stream()
+                .map(GitHubTrendingDto::fromEntity)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<GitHubTrendingDto> listAdmin(GitHubTrendingEntry.Period period) {
+        GitHubTrendingConfig config = findConfigOrDefault();
+        Instant batch = period == GitHubTrendingEntry.Period.MONTHLY
+                ? config.getLatestMonthlyBatch()
+                : config.getLatestWeeklyBatch();
+        if (batch == null) {
+            return List.of();
+        }
+        return entryRepository.findLatestByPeriod(period, batch, PageRequest.of(0, 100))
+                .stream()
+                .map(GitHubTrendingDto::fromEntity)
+                .toList();
+    }
+
+    @Transactional
+    public GitHubTrendingConfigDto getConfig() {
+        return GitHubTrendingConfigDto.fromEntity(getOrCreateConfig());
+    }
+
+    @Transactional
+    public GitHubTrendingConfigDto updateConfig(GitHubTrendingConfigRequest request) {
+        GitHubTrendingConfig config = getOrCreateConfig();
+        config.setLanguageFilter(blankToNull(request.getLanguageFilter()));
+        config.setKeywordFilter(blankToNull(request.getKeywordFilter()));
+        if (request.getHomeDisplayCount() != null) {
+            config.setHomeDisplayCount(Math.min(30, Math.max(1, request.getHomeDisplayCount())));
+        }
+        config.setRefreshCron(GitHubTrendingConfig.defaultConfig().getRefreshCron());
+        return GitHubTrendingConfigDto.fromEntity(configRepository.save(config));
+    }
+
+    @Transactional
+    public GitHubTrendingDto updateEntry(Long id, GitHubTrendingUpdateRequest request) {
+        GitHubTrendingEntry entry = entryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("GitHub trending entry not found: " + id));
+        entry.setEffectCn(request.getEffectCn());
+        entry.setScenarioCn(request.getScenarioCn());
+        entry.setSummaryStatus(request.getSummaryStatus() == null
+                ? GitHubTrendingEntry.SummaryStatus.MANUAL
+                : request.getSummaryStatus());
+        return GitHubTrendingDto.fromEntity(entryRepository.save(entry));
+    }
+
+    @Transactional
+    public GitHubTrendingDto regenerateSummary(Long id) {
+        GitHubTrendingEntry entry = entryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("GitHub trending entry not found: " + id));
+        applyGeneratedSummary(entry);
+        return GitHubTrendingDto.fromEntity(entryRepository.save(entry));
+    }
+
+    public GitHubTrendingStatusDto syncNow() {
+        if (!syncRunning.compareAndSet(false, true)) {
+            throw new SyncAlreadyRunningException();
+        }
+        try {
+            return runSync();
+        } finally {
+            syncRunning.set(false);
+        }
+    }
+
+    public GitHubTrendingStatusDto startSyncAsync() {
+        if (!syncRunning.compareAndSet(false, true)) {
+            throw new SyncAlreadyRunningException();
+        }
+        try {
+            GitHubTrendingConfig config = markSyncStarted();
+            scraperTaskExecutor.execute(() -> {
+                try {
+                    runSyncAfterStarted(config);
+                } finally {
+                    syncRunning.set(false);
+                }
+            });
+            return GitHubTrendingStatusDto.fromConfig(config);
+        } catch (RuntimeException ex) {
+            if (!(ex instanceof SyncAlreadyRunningException)) {
+                syncRunning.set(false);
+            }
+            throw ex;
+        }
+    }
+
+    private GitHubTrendingStatusDto runSync() {
+        GitHubTrendingConfig config = markSyncStarted();
+        return runSyncAfterStarted(config);
+    }
+
+    private GitHubTrendingStatusDto runSyncAfterStarted(GitHubTrendingConfig config) {
+        Instant batch = Instant.now();
+        try {
+            syncPeriodFetchedRows(
+                    GitHubTrendingEntry.Period.WEEKLY,
+                    filterRows(scraperService.fetch(GitHubTrendingEntry.Period.WEEKLY, config.getLanguageFilter()), config.getKeywordFilter()),
+                    batch
+            );
+            syncPeriodFetchedRows(
+                    GitHubTrendingEntry.Period.MONTHLY,
+                    filterRows(scraperService.fetch(GitHubTrendingEntry.Period.MONTHLY, config.getLanguageFilter()), config.getKeywordFilter()),
+                    batch
+            );
+            GitHubTrendingConfig completed = markSyncCompleted(batch);
+            return GitHubTrendingStatusDto.fromConfig(completed);
+        } catch (Exception e) {
+            markSyncFailed(e);
+            throw new IllegalStateException("Failed to sync GitHub trending data: " + e.getMessage(), e);
+        }
+    }
+
+    private GitHubTrendingConfig markSyncStarted() {
+        return transactionTemplate.execute(status -> {
+            GitHubTrendingConfig config = getOrCreateConfig();
+            config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.RUNNING);
+            config.setLastSyncError(null);
+            config.setLastSyncStartedAt(Instant.now());
+            config.setLastSyncFinishedAt(null);
+            return configRepository.save(config);
+        });
+    }
+
+    private GitHubTrendingConfig markSyncCompleted(Instant batch) {
+        return transactionTemplate.execute(status -> {
+            GitHubTrendingConfig config = getOrCreateConfig();
+            config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.COMPLETED);
+            config.setLastSyncError(null);
+            config.setLastSyncFinishedAt(Instant.now());
+            config.setLatestWeeklyBatch(batch);
+            config.setLatestMonthlyBatch(batch);
+            return configRepository.save(config);
+        });
+    }
+
+    private void markSyncFailed(Exception e) {
+        transactionTemplate.executeWithoutResult(status -> {
+            GitHubTrendingConfig config = getOrCreateConfig();
+            config.setLastSyncStatus(GitHubTrendingConfig.SyncStatus.FAILED);
+            config.setLastSyncError(limit(e.getMessage(), 1000));
+            config.setLastSyncFinishedAt(Instant.now());
+            configRepository.save(config);
+        });
+    }
+
+    private void syncPeriodFetchedRows(
+            GitHubTrendingEntry.Period period,
+            List<GitHubTrendingScraperService.TrendingRow> rows,
+            Instant batch
+    ) {
+        transactionTemplate.executeWithoutResult(status -> {
+            Instant fetchedAt = Instant.now();
+            for (GitHubTrendingScraperService.TrendingRow row : rows) {
+                GitHubTrendingEntry entry = entryRepository
+                        .findByPeriodAndRepoFullName(period, row.repoFullName())
+                        .orElseGet(GitHubTrendingEntry::new);
+                boolean isNew = entry.getId() == null;
+                applyRow(entry, row, fetchedAt, batch);
+                if (isNew) {
+                    applyGeneratedSummary(entry);
+                }
+                entryRepository.save(entry);
+            }
+        });
+    }
+
+    private void applyRow(GitHubTrendingEntry entry,
+                          GitHubTrendingScraperService.TrendingRow row,
+                          Instant fetchedAt,
+                          Instant batch) {
+        entry.setPeriod(row.period());
+        entry.setRank(row.rank());
+        entry.setRepoFullName(row.repoFullName());
+        entry.setRepoUrl(row.repoUrl());
+        entry.setDescription(row.description());
+        entry.setLanguage(row.language());
+        entry.setStars(row.stars());
+        entry.setForks(row.forks());
+        entry.setStarsGained(row.starsGained());
+        entry.setSourceFetchedAt(fetchedAt);
+        entry.setLastSeenBatch(batch);
+    }
+
+    private void applyGeneratedSummary(GitHubTrendingEntry entry) {
+        GitHubTrendingSummaryService.SummaryResult result = summaryService.generate(entry);
+        entry.setEffectCn(result.effectCn());
+        entry.setScenarioCn(result.scenarioCn());
+        entry.setSummaryStatus(switch (result.status()) {
+            case GENERATED -> GitHubTrendingEntry.SummaryStatus.GENERATED;
+            case FAILED -> GitHubTrendingEntry.SummaryStatus.FAILED;
+            case NEEDS_REVIEW -> GitHubTrendingEntry.SummaryStatus.NEEDS_REVIEW;
+        });
+    }
+
+    private List<GitHubTrendingScraperService.TrendingRow> filterRows(
+            List<GitHubTrendingScraperService.TrendingRow> rows,
+            String keywordFilter
+    ) {
+        String normalized = blankToNull(keywordFilter);
+        if (normalized == null) {
+            return rows;
+        }
+        List<String> keywords = List.of(normalized.toLowerCase().split(","))
+                .stream()
+                .map(String::trim)
+                .filter(keyword -> !keyword.isBlank())
+                .toList();
+        if (keywords.isEmpty()) {
+            return rows;
+        }
+        return rows.stream()
+                .filter(row -> keywords.stream().anyMatch(keyword -> rowMatchesKeyword(row, keyword)))
+                .toList();
+    }
+
+    private boolean rowMatchesKeyword(GitHubTrendingScraperService.TrendingRow row, String keyword) {
+        String text = String.join(" ",
+                valueOrEmpty(row.repoFullName()),
+                valueOrEmpty(row.description()),
+                valueOrEmpty(row.language())
+        ).toLowerCase();
+        return text.contains(keyword);
+    }
+
+    private GitHubTrendingConfig getOrCreateConfig() {
+        return configRepository.findById(GitHubTrendingConfig.SINGLETON_ID)
+                .orElseGet(() -> configRepository.save(GitHubTrendingConfig.defaultConfig()));
+    }
+
+    private GitHubTrendingConfig findConfigOrDefault() {
+        return configRepository.findById(GitHubTrendingConfig.SINGLETON_ID)
+                .orElseGet(GitHubTrendingConfig::defaultConfig);
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private String valueOrEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String limit(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+}

@@ -6,6 +6,7 @@ import com.example.platform.dto.SkillAssetMetricsDto;
 import com.example.platform.dto.SkillFeedbackDto;
 import com.example.platform.dto.SkillFeedbackRequest;
 import com.example.platform.dto.SkillFeedbackStatusRequest;
+import com.example.platform.dto.SkillGitLabPublishResultDto;
 import com.example.platform.dto.SkillGovernanceSummaryDto;
 import com.example.platform.dto.SkillLeaderboardItemDto;
 import com.example.platform.dto.SkillMonthlyAwardCandidateDto;
@@ -25,6 +26,7 @@ import com.example.platform.dto.SkillUsageRequest;
 import com.example.platform.entity.Skill;
 import com.example.platform.entity.Skill.AssetLevel;
 import com.example.platform.entity.Skill.BuildPriority;
+import com.example.platform.entity.Skill.CreationSource;
 import com.example.platform.entity.Skill.LifecycleStatus;
 import com.example.platform.entity.Skill.RiskLevel;
 import com.example.platform.entity.Skill.SkillCategory;
@@ -60,6 +62,7 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -86,19 +89,22 @@ public class SkillGovernanceService {
     private final SkillUsageEventRepository skillUsageEventRepository;
     private final SkillOperationReportRepository skillOperationReportRepository;
     private final UserRepository userRepository;
+    private final GitLabSkillPublishService gitLabSkillPublishService;
 
     public SkillGovernanceService(SkillRepository skillRepository,
                                   SkillReviewRepository skillReviewRepository,
                                   SkillFeedbackRepository skillFeedbackRepository,
                                   SkillUsageEventRepository skillUsageEventRepository,
                                   SkillOperationReportRepository skillOperationReportRepository,
-                                  UserRepository userRepository) {
+                                  UserRepository userRepository,
+                                  GitLabSkillPublishService gitLabSkillPublishService) {
         this.skillRepository = skillRepository;
         this.skillReviewRepository = skillReviewRepository;
         this.skillFeedbackRepository = skillFeedbackRepository;
         this.skillUsageEventRepository = skillUsageEventRepository;
         this.skillOperationReportRepository = skillOperationReportRepository;
         this.userRepository = userRepository;
+        this.gitLabSkillPublishService = gitLabSkillPublishService;
     }
 
     @Transactional(readOnly = true)
@@ -484,10 +490,12 @@ public class SkillGovernanceService {
         review.setReviewedAt(reviewedAt);
         review.setNextReviewAt(request.nextReviewAt());
 
+        boolean alreadyPublishedToGitLab = hasGitLabMergeRequest(skill);
         skill.setLastReviewedAt(reviewedAt);
         skill.setNextReviewAt(request.nextReviewAt());
         skill.setReviewNotes(blankToNull(request.notes()));
         skill.setLifecycleStatus(statusFromReviewResult(request.result()));
+        publishApprovedPackageIfNeeded(skill, alreadyPublishedToGitLab);
         skillRepository.save(skill);
 
         return SkillReviewDto.fromEntity(skillReviewRepository.save(review));
@@ -514,6 +522,93 @@ public class SkillGovernanceService {
                 && reviewerRole != ReviewerRole.SECURITY_QUALITY) {
             throw new IllegalArgumentException("高风险 Skill 需由技术委员会或安全/质量团队评审通过");
         }
+    }
+
+    private void publishApprovedPackageIfNeeded(Skill skill, boolean alreadyPublishedToGitLab) {
+        if (skill.getLifecycleStatus() != LifecycleStatus.APPROVED
+                || skill.getCreationSource() != CreationSource.SKILL_CREATOR_PACKAGE
+                || alreadyPublishedToGitLab
+                || hasGitLabMergeRequest(skill)) {
+            return;
+        }
+        SkillGitLabPublishResultDto publication = gitLabSkillPublishService.publishPackage(
+                skill.getSkillDirectory(),
+                skill.getName(),
+                publishableFiles(skill)
+        );
+        applyGitLabPublication(skill, publication);
+    }
+
+    private void applyGitLabPublication(Skill skill, SkillGitLabPublishResultDto publication) {
+        if (publication == null || !"PUBLISHED".equals(publication.status())) {
+            appendReviewNote(skill, publication != null ? publication.message() : null);
+            return;
+        }
+        if (hasText(publication.repositoryUrl())) {
+            skill.setSourceRepositoryUrl(publication.repositoryUrl());
+            skill.setCloneCommand(buildGitCloneCommand(publication.repositoryUrl()));
+        }
+        appendReviewNote(skill, "GitLab MR：" + publication.mergeRequestUrl());
+        appendReviewNote(skill, "GitLab 分支：" + publication.branchName());
+        appendReviewNote(skill, "GitLab 路径：" + publication.skillPath());
+    }
+
+    private Map<String, byte[]> publishableFiles(Skill skill) {
+        Map<String, byte[]> files = parsePackageFiles(skill.getSkillPackageFiles());
+        if (!files.isEmpty()) {
+            return files;
+        }
+        if (!hasText(skill.getContentMd())) {
+            throw new IllegalArgumentException("GitLab 发布失败：Skill 缺少可发布文件");
+        }
+        return Map.of("SKILL.md", skill.getContentMd().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private Map<String, byte[]> parsePackageFiles(String json) {
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        String raw = blankToNull(json);
+        if (raw == null) {
+            return files;
+        }
+        try {
+            Map<?, ?> decoded = new com.fasterxml.jackson.databind.ObjectMapper().readValue(raw, Map.class);
+            for (Map.Entry<?, ?> entry : decoded.entrySet()) {
+                if (entry.getKey() instanceof String path && entry.getValue() instanceof String content) {
+                    files.put(path, Base64.getDecoder().decode(content));
+                }
+            }
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("GitLab 发布失败：Skill 包文件归档损坏");
+        }
+        return files;
+    }
+
+    private String buildGitCloneCommand(String repositoryUrl) {
+        String url = blankToNull(repositoryUrl);
+        if (url == null) {
+            return "git clone <待评审后生成的仓库地址>";
+        }
+        if (url.endsWith(".git")) {
+            return "git clone " + url;
+        }
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return "git clone " + url + ".git";
+        }
+        return "git clone " + url;
+    }
+
+    private void appendReviewNote(Skill skill, String note) {
+        String cleaned = blankToNull(note);
+        if (cleaned == null) {
+            return;
+        }
+        String current = blankToNull(skill.getReviewNotes());
+        skill.setReviewNotes(current == null ? cleaned : current + "\n" + cleaned);
+    }
+
+    private boolean hasGitLabMergeRequest(Skill skill) {
+        String notes = skill.getReviewNotes();
+        return notes != null && notes.contains("GitLab MR：");
     }
 
     @Transactional(readOnly = true)
@@ -1365,7 +1460,7 @@ public class SkillGovernanceService {
         items.add(required("validationMethod", "验证方式", skill.getValidationMethod(), "需要列出测试、检查或人工复核办法"));
         items.add(requiredAny("referenceMaterials", "参考资料", "需要关联规范、业务规则、接口文档或示例", skill.getReferenceMaterials(), skill.getContentMd()));
         items.add(sensitiveContentCheck(skill));
-        if (requiresSharedAssetMetadata(skill)) {
+        if (requiresSharedAssetMetadata(skill) && !awaitingGitLabPublication(skill)) {
             items.add(required("sourceRepositoryUrl", "仓库地址", skill.getSourceRepositoryUrl(), "团队级/公司级资产需要关联统一仓库或来源"));
             items.add(required("skillDirectory", "Skill 目录", skill.getSkillDirectory(), "团队级/公司级资产需要记录 skill-creator 生成的目录名"));
         } else {
@@ -1456,6 +1551,13 @@ public class SkillGovernanceService {
 
     private boolean requiresSharedAssetMetadata(Skill skill) {
         return skill.getAssetLevel() == AssetLevel.TEAM || skill.getAssetLevel() == AssetLevel.COMPANY;
+    }
+
+    private boolean awaitingGitLabPublication(Skill skill) {
+        return gitLabSkillPublishService.isPublicationEnabled()
+                && skill.getCreationSource() == CreationSource.SKILL_CREATOR_PACKAGE
+                && hasText(skill.getSkillPackageFiles())
+                && !hasText(skill.getSourceRepositoryUrl());
     }
 
     private String buildValidationNotes(List<SkillTemplateValidationItemDto> items) {

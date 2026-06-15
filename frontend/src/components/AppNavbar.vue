@@ -61,8 +61,9 @@ const usesSkillsLoginDialog = computed(() => (
 
 const navLinks = [
   { path: '/', label: '主页' },
-  { path: '/skills', label: 'Skill资产库', activePaths: ['/skills', '/external-skills'] },
+  { path: '/skills', label: 'Skill资产库', activePaths: ['/skills'] },
   { path: '/articles', label: 'AI知识库' },
+  { path: '/forum', label: '论坛' },
   { path: '/news', label: 'AI资讯' },
   { path: '/llm-leaderboard', label: 'LLM 排行榜' },
 ]

@@ -20,7 +20,9 @@ import com.example.platform.entity.SkillReview.ReviewerRole;
 import com.example.platform.entity.SkillUsageEvent;
 import com.example.platform.entity.Tag;
 import com.example.platform.entity.User;
+import com.example.platform.entity.ForumCategory;
 import com.example.platform.repository.CategoryRepository;
+import com.example.platform.repository.ForumCategoryRepository;
 import com.example.platform.repository.SkillFeedbackRepository;
 import com.example.platform.repository.SkillRepository;
 import com.example.platform.repository.SkillReviewRepository;
@@ -45,6 +47,7 @@ public class DataInitializer implements ApplicationRunner {
     private final CategoryRepository categoryRepository;
     private final SkillRepository skillRepository;
     private final TagRepository tagRepository;
+    private final ForumCategoryRepository forumCategoryRepository;
     private final SkillReviewRepository skillReviewRepository;
     private final SkillFeedbackRepository skillFeedbackRepository;
     private final SkillUsageEventRepository skillUsageEventRepository;
@@ -53,6 +56,7 @@ public class DataInitializer implements ApplicationRunner {
 
     public DataInitializer(UserRepository userRepository, CategoryRepository categoryRepository,
                            SkillRepository skillRepository, TagRepository tagRepository,
+                           ForumCategoryRepository forumCategoryRepository,
                            SkillReviewRepository skillReviewRepository,
                            SkillFeedbackRepository skillFeedbackRepository,
                            SkillUsageEventRepository skillUsageEventRepository,
@@ -61,6 +65,7 @@ public class DataInitializer implements ApplicationRunner {
         this.categoryRepository = categoryRepository;
         this.skillRepository = skillRepository;
         this.tagRepository = tagRepository;
+        this.forumCategoryRepository = forumCategoryRepository;
         this.skillReviewRepository = skillReviewRepository;
         this.skillFeedbackRepository = skillFeedbackRepository;
         this.skillUsageEventRepository = skillUsageEventRepository;
@@ -72,6 +77,7 @@ public class DataInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         seedCategoriesIfEmpty();
+        seedForumCategoriesIfEmpty();
         seedAdminIfNone();
         seedPilotSkillsIfEnabled();
     }
@@ -88,6 +94,25 @@ public class DataInitializer implements ApplicationRunner {
             c.setType(defaults[i][1]);
             c.setSortOrder(Integer.parseInt(defaults[i][2]));
             categoryRepository.save(c);
+        }
+    }
+
+    private void seedForumCategoriesIfEmpty() {
+        if (forumCategoryRepository.count() > 0) return;
+        String[][] defaults = {
+                { "提问求助", "help", "遇到问题时先来这里发问", "10" },
+                { "经验分享", "share", "沉淀实战经验和踩坑总结", "20" },
+                { "方案讨论", "discussion", "围绕方案、工具和架构展开讨论", "30" },
+                { "最佳实践", "practice", "发布团队通用方法和最佳实践", "40" },
+        };
+        for (String[] row : defaults) {
+            ForumCategory category = new ForumCategory();
+            category.setName(row[0]);
+            category.setSlug(row[1]);
+            category.setDescription(row[2]);
+            category.setSortOrder(Integer.parseInt(row[3]));
+            category.setEnabled(true);
+            forumCategoryRepository.save(category);
         }
     }
 

@@ -42,6 +42,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -90,7 +91,8 @@ class SkillGovernanceGateTest {
                 skillFeedbackRepository,
                 skillUsageEventRepository,
                 skillOperationReportRepository,
-                userRepository
+                userRepository,
+                gitLabSkillPublishService
         );
     }
 
@@ -266,6 +268,103 @@ class SkillGovernanceGateTest {
         assertThat(skill.getLastReviewedAt()).isEqualTo(reviewedAt);
         assertThat(skill.getNextReviewAt()).isEqualTo(nextReviewAt);
         assertThat(skill.getReviewNotes()).isEqualTo("ready");
+    }
+
+    @Test
+    void createReviewPublishesSkillCreatorPackageToGitLabWhenApprovalPasses() {
+        Skill skill = skill(24L, AssetLevel.TEAM, RiskLevel.LOW, TemplateValidationStatus.PASSED);
+        skill.setLifecycleStatus(LifecycleStatus.REVIEWING);
+        skill.setCreationSource(Skill.CreationSource.SKILL_CREATOR_PACKAGE);
+        skill.setSourceRepositoryUrl(null);
+        skill.setCloneCommand("git clone <待评审后生成的仓库地址>");
+        skill.setReviewNotes("ready");
+        skill.setSkillPackageFiles("""
+                {
+                  "SKILL.md": "IyBVbml0IFRlc3QgU2tpbGwK",
+                  "references/checklist.md": "IyBDaGVja2xpc3QK"
+                }
+                """);
+        gitLabSkillPublishService.enabled = true;
+        gitLabSkillPublishService.publishResult = SkillGitLabPublishResultDto.published(
+                "https://git.example.com/platform/ai-skills",
+                "skill/unit-test-skill-123",
+                "main",
+                "https://git.example.com/platform/ai-skills/-/merge_requests/9",
+                "skills/unit-test-skill",
+                "def456"
+        );
+        when(skillRepository.findById(24L)).thenReturn(Optional.of(skill));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user(7L, "Reviewer", ReviewerRole.TECH_LEAD)));
+        when(skillRepository.save(any(Skill.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(skillReviewRepository.save(any(SkillReview.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        governanceService.createReview(24L, passedReview(ReviewerRole.TECH_LEAD), 7L);
+
+        assertThat(gitLabSkillPublishService.publishCalls).isEqualTo(1);
+        assertThat(gitLabSkillPublishService.publishedSkillDirectory).isEqualTo("unit-test-skill");
+        assertThat(gitLabSkillPublishService.publishedSkillName).isEqualTo("Unit Test Skill");
+        assertThat(gitLabSkillPublishService.publishedFiles).containsKeys("SKILL.md", "references/checklist.md");
+        assertThat(skill.getLifecycleStatus()).isEqualTo(LifecycleStatus.APPROVED);
+        assertThat(skill.getSourceRepositoryUrl()).isEqualTo("https://git.example.com/platform/ai-skills");
+        assertThat(skill.getCloneCommand()).isEqualTo("git clone https://git.example.com/platform/ai-skills.git");
+        assertThat(skill.getReviewNotes()).contains("GitLab MR：https://git.example.com/platform/ai-skills/-/merge_requests/9");
+        assertThat(skill.getReviewNotes()).contains("GitLab 路径：skills/unit-test-skill");
+    }
+
+    @Test
+    void createReviewPublishesPackageEvenWhenPackageDeclaredSourceRepository() {
+        Skill skill = skill(25L, AssetLevel.TEAM, RiskLevel.LOW, TemplateValidationStatus.PASSED);
+        skill.setLifecycleStatus(LifecycleStatus.REVIEWING);
+        skill.setCreationSource(Skill.CreationSource.SKILL_CREATOR_PACKAGE);
+        skill.setSourceRepositoryUrl("https://git.example.com/ai-skills/unit-test-skill");
+        skill.setCloneCommand("git clone https://git.example.com/ai-skills/unit-test-skill.git");
+        skill.setSkillPackageFiles("""
+                {
+                  "SKILL.md": "IyBVbml0IFRlc3QgU2tpbGwK"
+                }
+                """);
+        gitLabSkillPublishService.enabled = true;
+        gitLabSkillPublishService.publishResult = SkillGitLabPublishResultDto.published(
+                "https://git.example.com/platform/ai-skills",
+                "skill/unit-test-skill-456",
+                "main",
+                "https://git.example.com/platform/ai-skills/-/merge_requests/10",
+                "skills/unit-test-skill",
+                "ghi789"
+        );
+        when(skillRepository.findById(25L)).thenReturn(Optional.of(skill));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user(7L, "Reviewer", ReviewerRole.TECH_LEAD)));
+        when(skillRepository.save(any(Skill.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(skillReviewRepository.save(any(SkillReview.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        governanceService.createReview(25L, passedReview(ReviewerRole.TECH_LEAD), 7L);
+
+        assertThat(gitLabSkillPublishService.publishCalls).isEqualTo(1);
+        assertThat(skill.getSourceRepositoryUrl()).isEqualTo("https://git.example.com/platform/ai-skills");
+        assertThat(skill.getReviewNotes()).contains("GitLab MR：https://git.example.com/platform/ai-skills/-/merge_requests/10");
+    }
+
+    @Test
+    void createReviewDoesNotRepublishPackageWhenGitLabMergeRequestAlreadyExists() {
+        Skill skill = skill(26L, AssetLevel.TEAM, RiskLevel.LOW, TemplateValidationStatus.PASSED);
+        skill.setLifecycleStatus(LifecycleStatus.REVIEWING);
+        skill.setCreationSource(Skill.CreationSource.SKILL_CREATOR_PACKAGE);
+        skill.setSourceRepositoryUrl("https://git.example.com/platform/ai-skills");
+        skill.setReviewNotes("ready\nGitLab MR：https://git.example.com/platform/ai-skills/-/merge_requests/9");
+        skill.setSkillPackageFiles("""
+                {
+                  "SKILL.md": "IyBVbml0IFRlc3QgU2tpbGwK"
+                }
+                """);
+        gitLabSkillPublishService.enabled = true;
+        when(skillRepository.findById(26L)).thenReturn(Optional.of(skill));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user(7L, "Reviewer", ReviewerRole.TECH_LEAD)));
+        when(skillRepository.save(any(Skill.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(skillReviewRepository.save(any(SkillReview.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        governanceService.createReview(26L, passedReview(ReviewerRole.TECH_LEAD), 7L);
+
+        assertThat(gitLabSkillPublishService.publishCalls).isZero();
     }
 
     @Test
@@ -586,9 +685,29 @@ class SkillGovernanceGateTest {
         private String deletedSkillDirectory;
         private String deletedSkillName;
         private boolean failDeletion;
+        private boolean enabled;
+        private int publishCalls;
+        private String publishedSkillDirectory;
+        private String publishedSkillName;
+        private Map<String, byte[]> publishedFiles;
+        private SkillGitLabPublishResultDto publishResult = SkillGitLabPublishResultDto.disabled("stub");
 
         private StubGitLabSkillPublishService() {
             super(new ObjectMapper(), false, "", "", "", "", "main", "skills", "skill");
+        }
+
+        @Override
+        public boolean isPublicationEnabled() {
+            return enabled;
+        }
+
+        @Override
+        public SkillGitLabPublishResultDto publishPackage(String skillDirectory, String skillName, Map<String, byte[]> files) {
+            publishCalls++;
+            publishedSkillDirectory = skillDirectory;
+            publishedSkillName = skillName;
+            publishedFiles = files;
+            return publishResult;
         }
 
         @Override

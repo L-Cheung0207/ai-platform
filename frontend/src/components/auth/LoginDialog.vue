@@ -70,6 +70,7 @@ function goRegister() {
     modal-class="login-dialog-modal"
     append-to-body
     destroy-on-close
+    :lock-scroll="false"
     :close-on-click-modal="!loading"
     @closed="resetForm"
   >
