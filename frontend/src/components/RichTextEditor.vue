@@ -16,13 +16,14 @@
         Markdown（纯文本语法）
       </button>
     </div>
-    <QuillEditor
-      v-show="contentType !== 'MARKDOWN' && mode === 'html'"
-      v-model:content="content"
-      content-type="html"
-      :options="editorOptions"
-      @ready="onEditorReady"
-    />
+    <div v-show="contentType !== 'MARKDOWN' && mode === 'html'" class="quill-editor-shell">
+      <QuillEditor
+        v-model:content="content"
+        content-type="html"
+        :options="editorOptions"
+        @ready="onEditorReady"
+      />
+    </div>
     <textarea
       v-show="contentType === 'MARKDOWN' || mode === 'markdown'"
       v-model="mdContent"

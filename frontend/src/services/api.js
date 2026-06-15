@@ -25,8 +25,8 @@ api.interceptors.response.use(
     const status = err.response?.status
     const d = err.response?.data
     const msg = d?.message || d?.error || d?.msg || err.message || '网络错误'
-    // 401（含 token 过期）或访问管理接口时的 403：清除登录状态并跳转登录页
-    if (status === 401 || (status === 403 && err.config?.url?.includes('/admin/'))) {
+    // 仅在登录失效时清除登录状态，避免偶发 403 误伤已登录会话
+    if (status === 401) {
       const { useAuthStore } = await import('../stores/auth')
       useAuthStore().logout()
       const router = (await import('../router')).default

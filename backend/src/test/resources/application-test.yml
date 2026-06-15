@@ -11,8 +11,6 @@ app:
       enabled: false
     mcp:
       enabled: false
-    external-skills:
-      enabled: false
     llm-leaderboard:
       enabled: false
     aibase:

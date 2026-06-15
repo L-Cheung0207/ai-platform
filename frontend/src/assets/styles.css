@@ -202,15 +202,6 @@ html.scrollbar-visible {
     0 0 0 1px rgba(255, 255, 255, 0.8) inset;
 }
 
-.el-overlay.login-dialog-modal .el-dialog::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 4px;
-  background: linear-gradient(90deg, var(--login-brand-blue) 0%, var(--login-brand-teal) 100%);
-  pointer-events: none;
-}
-
 .el-overlay.login-dialog-modal .login-dialog-header {
   position: relative;
   margin: 0;

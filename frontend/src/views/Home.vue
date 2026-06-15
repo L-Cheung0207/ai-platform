@@ -47,82 +47,7 @@
             </div>
           </section>
 
-          <section class="home-section home-section--knowledge home-section-anim">
-            <div class="home-section-header">
-              <div>
-                <p class="home-section-kicker">Knowledge</p>
-                <h2 class="home-section-title">
-                  <span class="home-section-icon">
-                    <Icons name="book" :size="20" />
-                  </span>
-                  最新知识
-                </h2>
-              </div>
-              <router-link to="/articles" class="home-more">更多</router-link>
-            </div>
-            <ul v-if="latestArticles?.length" class="home-list">
-              <li v-for="(a, i) in latestArticles" :key="a.id" class="home-list-item" :style="{ animationDelay: `${i * 35}ms` }">
-                <router-link :to="'/articles/' + a.id" class="home-list-link">{{ a.title }}</router-link>
-              </li>
-            </ul>
-            <p v-else-if="!loading" class="home-empty">暂无知识内容</p>
-          </section>
-        </div>
-
-        <aside v-if="latestExternalSkills?.length || latestNews?.length || latestLlmLeaderboard?.length || hasGithubTrending" class="home-sidebar">
-          <section v-if="latestExternalSkills?.length" class="home-section home-section--external home-section-news home-section-anim">
-            <div class="home-section-header">
-              <div>
-                <p class="home-section-kicker">Community</p>
-                <h2 class="home-section-title">
-                  <span class="home-section-icon">
-                    <Icons name="link" :size="20" />
-                  </span>
-                  外部 Skill
-                </h2>
-              </div>
-              <router-link to="/skills" class="home-more">更多</router-link>
-            </div>
-            <ul class="home-news-list">
-              <li v-for="(s, i) in latestExternalSkills" :key="s.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
-                <router-link :to="'/external-skills/' + s.id" class="home-news-link">
-                  <span class="home-news-num home-news-num-normal">{{ i + 1 }}</span>
-                  <span class="home-news-copy">
-                    <span class="home-news-title">{{ s.name }}</span>
-                    <span v-if="s.description" class="home-news-meta">{{ s.description }}</span>
-                  </span>
-                </router-link>
-              </li>
-            </ul>
-          </section>
-
-          <section v-if="latestLlmLeaderboard?.length" class="home-section home-section--leaderboard home-section-news home-section-anim">
-            <div class="home-section-header">
-              <div>
-                <p class="home-section-kicker">Leaderboard</p>
-                <h2 class="home-section-title">
-                  <span class="home-section-icon">
-                    <Icons name="sparkle" :size="20" />
-                  </span>
-                  最新编程模型排行榜
-                </h2>
-              </div>
-              <router-link to="/llm-leaderboard" class="home-more">更多</router-link>
-            </div>
-            <ul class="home-news-list">
-              <li v-for="(m, i) in latestLlmLeaderboard" :key="m.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
-                <router-link to="/llm-leaderboard" class="home-news-link">
-                  <span class="home-news-num" :class="i < 3 ? 'home-news-num-hot' : 'home-news-num-normal'">{{ i + 1 }}</span>
-                  <span class="home-news-copy">
-                    <span class="home-news-title">{{ m.rankBadge }}{{ m.modelName }}</span>
-                    <span v-if="m.organization || m.provider" class="home-news-meta">{{ m.organization || m.provider }}</span>
-                  </span>
-                </router-link>
-              </li>
-            </ul>
-          </section>
-
-          <section v-if="hasGithubTrending" class="home-section home-section--github home-section-news home-section-anim">
+          <section v-if="hasGithubTrending" class="home-section home-section--github home-section-anim">
             <div class="home-section-header home-trending-header">
               <div>
                 <p class="home-section-kicker">Open Source</p>
@@ -157,26 +82,95 @@
                 </button>
               </div>
             </div>
-            <ul class="home-news-list">
-              <li
+            <div class="home-trending-grid">
+              <a
                 v-for="(repo, i) in currentGithubTrending"
                 :key="`${repo.period || githubTrendingPeriod}-${repo.repoFullName}`"
-                class="home-news-item"
+                :href="repo.repoUrl || `https://github.com/${repo.repoFullName}`"
+                target="_blank"
+                rel="noopener"
+                class="home-trending-card"
                 :style="{ animationDelay: `${i * 35}ms` }"
               >
-                <a
-                  :href="repo.repoUrl || `https://github.com/${repo.repoFullName}`"
-                  target="_blank"
-                  rel="noopener"
-                  class="home-news-link home-trending-link"
-                >
-                  <span class="home-news-num" :class="repo.rank <= 3 ? 'home-news-num-hot' : 'home-news-num-normal'">{{ repo.rank }}</span>
-                  <span class="home-news-copy">
-                    <span class="home-news-title">{{ repo.repoFullName }}</span>
-                    <span v-if="repo.effectCn" class="home-news-meta">{{ repo.effectCn }}</span>
-                    <span v-if="repo.scenarioCn" class="home-trending-scenario">{{ repo.scenarioCn }}</span>
+                <span class="home-trending-rank" :class="repo.rank <= 3 ? 'home-trending-rank--hot' : 'home-trending-rank--normal'">
+                  {{ repo.rank }}
+                </span>
+                <span class="home-trending-copy">
+                  <span class="home-trending-repo">{{ repo.repoFullName }}</span>
+                  <span v-if="repo.effectCn" class="home-trending-effect">{{ repo.effectCn }}</span>
+                  <span v-if="repo.scenarioCn" class="home-trending-scenario">{{ repo.scenarioCn }}</span>
+                </span>
+              </a>
+            </div>
+          </section>
+
+          <section class="home-section home-section--knowledge home-section-anim">
+            <div class="home-section-header">
+              <div>
+                <p class="home-section-kicker">Knowledge</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="book" :size="20" />
                   </span>
-                </a>
+                  最新知识
+                </h2>
+              </div>
+              <router-link to="/articles" class="home-more">更多</router-link>
+            </div>
+            <ul v-if="latestArticles?.length" class="home-list">
+              <li v-for="(a, i) in latestArticles" :key="a.id" class="home-list-item" :style="{ animationDelay: `${i * 35}ms` }">
+                <router-link :to="'/articles/' + a.id" class="home-list-link">{{ a.title }}</router-link>
+              </li>
+            </ul>
+            <p v-else-if="!loading" class="home-empty">暂无知识内容</p>
+          </section>
+
+          <section class="home-section home-section--forum home-section-anim">
+            <div class="home-section-header">
+              <div>
+                <p class="home-section-kicker">Forum</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="document" :size="20" />
+                  </span>
+                  技术交流论坛
+                </h2>
+              </div>
+              <router-link to="/forum" class="home-more">进入</router-link>
+            </div>
+            <router-link to="/forum" class="home-forum-card">
+              <span class="home-forum-card__mark">讨论场</span>
+              <span class="home-forum-card__copy">
+                <strong>把问题、方案和经验留在一个可以搜索、回复、采纳和收藏的地方。</strong>
+                <small>适合提问求助、方案讨论、踩坑复盘和最佳实践沉淀。</small>
+              </span>
+            </router-link>
+          </section>
+        </div>
+
+        <aside v-if="latestNews?.length || latestLlmLeaderboard?.length" class="home-sidebar">
+          <section v-if="latestLlmLeaderboard?.length" class="home-section home-section--leaderboard home-section-news home-section-anim">
+            <div class="home-section-header">
+              <div>
+                <p class="home-section-kicker">Leaderboard</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="sparkle" :size="20" />
+                  </span>
+                  最新编程模型排行榜
+                </h2>
+              </div>
+              <router-link to="/llm-leaderboard" class="home-more">更多</router-link>
+            </div>
+            <ul class="home-news-list">
+              <li v-for="(m, i) in latestLlmLeaderboard" :key="m.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
+                <router-link to="/llm-leaderboard" class="home-news-link">
+                  <span class="home-news-num" :class="i < 3 ? 'home-news-num-hot' : 'home-news-num-normal'">{{ i + 1 }}</span>
+                  <span class="home-news-copy">
+                    <span class="home-news-title">{{ m.rankBadge }}{{ m.modelName }}</span>
+                    <span v-if="m.organization || m.provider" class="home-news-meta">{{ m.organization || m.provider }}</span>
+                  </span>
+                </router-link>
               </li>
             </ul>
           </section>
@@ -221,7 +215,6 @@ import Icons from '../components/Icons.vue'
 import api from '../services/api'
 
 const latestSkills = ref([])
-const latestExternalSkills = ref([])
 const latestArticles = ref([])
 const latestNews = ref([])
 const latestLlmLeaderboard = ref([])
@@ -253,7 +246,6 @@ onMounted(async () => {
   try {
     const data = await api.get('/home')
     latestSkills.value = data.latestSkills || []
-    latestExternalSkills.value = data.latestExternalSkills || []
     latestArticles.value = data.latestArticles || []
     latestNews.value = (data.latestNews || []).slice(0, 10)
     latestLlmLeaderboard.value = data.latestLlmLeaderboard || []
@@ -442,10 +434,10 @@ function lifecycleLabel(value) {
   --home-section-text: #2E68B8;
 }
 
-.home-section--external {
-  --home-section-accent: #16a34a;
-  --home-section-soft: rgba(22, 163, 74, 0.1);
-  --home-section-text: #15803d;
+.home-section--forum {
+  --home-section-accent: #14b8a6;
+  --home-section-soft: rgba(20, 184, 166, 0.12);
+  --home-section-text: #0f766e;
 }
 
 .home-section--leaderboard {
@@ -634,6 +626,58 @@ function lifecycleLabel(value) {
   background: #f8fafc;
 }
 
+.home-forum-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 96px;
+  padding: 1rem;
+  border-radius: 18px;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid rgba(13, 148, 136, 0.14);
+  background:
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(240, 253, 250, 0.96), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.home-forum-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(13, 148, 136, 0.32);
+  box-shadow: 0 18px 32px rgba(13, 148, 136, 0.12);
+}
+
+.home-forum-card__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  color: white;
+  font-weight: 800;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.home-forum-card__copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.home-forum-card__copy strong {
+  color: #0f172a;
+  line-height: 1.55;
+}
+
+.home-forum-card__copy small {
+  color: #64748b;
+  line-height: 1.5;
+}
+
 .home-list {
   list-style: none;
   padding: 0;
@@ -763,6 +807,81 @@ function lifecycleLabel(value) {
   line-height: 1.35;
 }
 
+.home-trending-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.home-trending-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.82rem;
+  min-height: 9rem;
+  padding: 1rem;
+  border: 1px solid rgba(203, 213, 225, 0.84);
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.98));
+  animation: home-fade-up 0.4s ease-out both;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.home-trending-card:hover {
+  border-color: rgba(36, 41, 47, 0.24);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.home-trending-rank {
+  flex-shrink: 0;
+  width: 2.35rem;
+  height: 2.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 780;
+}
+
+.home-trending-rank--hot {
+  color: #ffffff;
+  background: #24292f;
+  box-shadow: 0 8px 18px rgba(36, 41, 47, 0.18);
+}
+
+.home-trending-rank--normal {
+  color: #475569;
+  background: #eef2f7;
+}
+
+.home-trending-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.48rem;
+}
+
+.home-trending-repo {
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 720;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.home-trending-effect {
+  color: #334155;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .home-trending-tabs {
   flex-shrink: 0;
   display: inline-flex;
@@ -796,16 +915,10 @@ function lifecycleLabel(value) {
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
 }
 
-.home-trending-link {
-  min-width: 0;
-}
-
 .home-trending-scenario {
-  display: block;
-  margin-top: 0.28rem;
-  color: #475569;
-  font-size: 0.76rem;
-  line-height: 1.42;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -824,6 +937,16 @@ function lifecycleLabel(value) {
 
   .home-trending-tab {
     flex: 1;
+  }
+}
+
+@media (max-width: 639px) {
+  .home-trending-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-trending-card {
+    min-height: auto;
   }
 }
 
@@ -852,11 +975,13 @@ function lifecycleLabel(value) {
 @media (prefers-reduced-motion: reduce) {
   .home-section,
   .home-card,
+  .home-trending-card,
   .home-list-item,
   .home-news-item {
     animation: none !important;
   }
-  .home-card:hover {
+  .home-card:hover,
+  .home-trending-card:hover {
     transform: none;
   }
 }

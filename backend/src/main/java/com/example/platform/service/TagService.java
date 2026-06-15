@@ -2,16 +2,12 @@ package com.example.platform.service;
 
 import com.example.platform.entity.Rule;
 import com.example.platform.entity.Skill;
-import com.example.platform.entity.ExternalSkill;
 import com.example.platform.entity.Tag;
 import com.example.platform.repository.TagRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class TagService {
@@ -37,16 +33,9 @@ public class TagService {
     }
 
     private List<Tag> mergeSkillTags() {
-        Map<Long, Tag> tagsById = tagRepository.findTagsUsedByVisibleSkills(
-                        Skill.Visibility.VISIBLE,
-                        Skill.LifecycleStatus.APPROVED)
-                .stream()
-                .collect(Collectors.toMap(Tag::getId, t -> t, (left, right) -> left));
-        tagRepository.findTagsUsedByVisibleExternalSkills(ExternalSkill.Visibility.VISIBLE)
-                .forEach(t -> tagsById.putIfAbsent(t.getId(), t));
-        return tagsById.values().stream()
-                .sorted(Comparator.comparing(Tag::getName, String.CASE_INSENSITIVE_ORDER))
-                .toList();
+        return tagRepository.findTagsUsedByVisibleSkills(
+                Skill.Visibility.VISIBLE,
+                Skill.LifecycleStatus.APPROVED);
     }
 
 

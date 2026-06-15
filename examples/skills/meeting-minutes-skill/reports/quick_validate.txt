@@ -1,0 +1,8 @@
+quick_validate.py PASSED
+
+Validated:
+- SKILL.md exists.
+- Required frontmatter fields exist.
+- agents/openai.yaml exists.
+- sourceRepositoryUrl exists.
+- references/minutes-template.md exists.

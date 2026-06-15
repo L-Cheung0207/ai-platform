@@ -25,12 +25,10 @@
 - `/forum/categories/:id`
 - `/forum/tags/:tag`
 - `/forum/mine`
-- `/external-skills/:id`
-- 首页右侧展示 GitHub Trending 周榜/月榜模块，数据来自后端定时同步。
+- 首页主内容区展示 GitHub Trending 周榜/月榜模块，数据来自后端定时同步。
 
 管理后台：
 - `/admin/skills`
-- `/admin/external-skills`
 - `/admin/rules`
 - `/admin/articles`
 - `/admin/news`
@@ -45,7 +43,6 @@
 
 - `Skill`：内部受治理资产。包含 clone 命令、正文、仓库地址、资产层级、生命周期、Skill 分类、建设优先级、风险级别、模板校验、评审数据、反馈数据、使用遥测。
 - `Rule`：内部文本资产。包含正文、分类、标签、可见性。
-- `ExternalSkill`：只存元数据的外部技能。包含安装命令、来源 URL、标签、可见性。
 - `LearningArticle`：管理员发布的知识内容。
 - `News`：管理员发布的资讯内容。
 - `LlmLeaderboardEntry`：公开排行榜数据。
@@ -77,7 +74,8 @@
 ## 开发事实
 
 - 默认开发管理员：`admin / admin123`。
-- `GET /api/home` 负责首页聚合，包含 Skill、外部 Skill、知识、资讯、LLM 排行榜和 GitHub Trending 周榜/月榜数据。
+- `GET /api/home` 负责首页聚合，包含 Skill、知识、资讯、LLM 排行榜和 GitHub Trending 周榜/月榜数据。
+- 外部 Skill 独立模块已下线，相关表由 `V32__drop_external_skills.sql` 删除；外部发现的好 Skill 应手动登记为正式 Skill 资产。
 - GitHub Trending 由后端每天早上自动同步，也可在后台手动刷新；手动刷新异步启动并有单实例运行保护；首页读取 `/api/home` 聚合数据，不单独请求公开 Trending 接口。
 - GitHub Trending 后台 API 位于 `/api/admin/github-trending`，仅 `ADMIN` 可用，支持状态、配置、列表、手动同步、摘要编辑和单条重生成。
 - 论坛默认分类由启动初始化补齐：`提问求助`、`经验分享`、`方案讨论`、`最佳实践`。

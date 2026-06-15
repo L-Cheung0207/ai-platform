@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { h } from 'vue'
+import { computed, h } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import Icons from '../../components/Icons.vue'
@@ -84,8 +84,18 @@ import Icons from '../../components/Icons.vue'
 const route = useRoute()
 const auth = useAuthStore()
 
+const activePath = computed(() => {
+  const candidates = menuGroups
+    .flatMap((group) => group.items)
+    .map((item) => item.path)
+    .filter((path) => route.path === path || route.path.startsWith(path + '/'))
+    .sort((a, b) => b.length - a.length)
+
+  return candidates[0] || ''
+})
+
 function isActive(path) {
-  return route.path === path || route.path.startsWith(path + '/')
+  return activePath.value === path
 }
 
 // Lucide-style 24x24 stroke icons (stroke-width 2)
@@ -112,11 +122,6 @@ const IconBookOpen = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke
   h('path', { d: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z' }),
   h('path', { d: 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z' }),
 ])
-const IconExternalLink = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
-  h('path', { d: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' }),
-  h('polyline', { points: '15 3 21 3 21 9' }),
-  h('line', { x1: '10', y1: '14', x2: '21', y2: '3' }),
-])
 const IconBarChart = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
   h('line', { x1: '12', y1: '20', x2: '12', y2: '10' }),
   h('line', { x1: '18', y1: '20', x2: '18', y2: '4' }),
@@ -136,13 +141,21 @@ const IconUsers = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: '
   h('path', { d: 'M22 21v-2a4 4 0 0 0-3-3.87' }),
   h('path', { d: 'M16 3.13a4 4 0 0 1 0 7.75' }),
 ])
+const IconMessageSquare = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
+  h('path', { d: 'M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z' }),
+])
+const IconFolderTree = () => h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', class: 'w-5 h-5 shrink-0' }, [
+  h('path', { d: 'M3 3h6v6H3z' }),
+  h('path', { d: 'M15 3h6v6h-6z' }),
+  h('path', { d: 'M15 15h6v6h-6z' }),
+  h('path', { d: 'M9 6h3a3 3 0 0 1 3 3v6' }),
+])
 
 const menuGroups = [
   {
     title: 'Skill 资产',
     items: [
       { path: '/admin/skills', label: 'Skill 资产', icon: IconBookOpen },
-      { path: '/admin/external-skills', label: '外部 Skill', icon: IconExternalLink },
       { path: '/admin/rules', label: 'Rule 管理', icon: IconFileCode },
       { path: '/admin/skill-operations', label: 'Skill 运营', icon: IconBarChart },
     ],
@@ -154,6 +167,8 @@ const menuGroups = [
       { path: '/admin/news', label: 'AI资讯', icon: IconNewspaper },
       { path: '/admin/github-trending', label: 'GitHub Trending', icon: IconTrophy },
       { path: '/admin/llm-leaderboard', label: 'LLM 排行榜', icon: IconTrophy },
+      { path: '/admin/forum', label: '论坛管理', icon: IconMessageSquare },
+      { path: '/admin/forum/categories', label: '论坛分类', icon: IconFolderTree },
     ],
   },
   {

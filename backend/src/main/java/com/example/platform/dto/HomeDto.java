@@ -8,7 +8,6 @@ import java.time.Instant;
 public class HomeDto {
 
     private List<SkillDto> latestSkills;
-    private List<ExternalSkillDto> latestExternalSkills;
     private List<ArticleDto> latestArticles;
     private List<News> latestNews;
     private List<LlmLeaderboardEntryDto> latestLlmLeaderboard;
@@ -18,8 +17,6 @@ public class HomeDto {
 
     public List<SkillDto> getLatestSkills() { return latestSkills; }
     public void setLatestSkills(List<SkillDto> latestSkills) { this.latestSkills = latestSkills; }
-    public List<ExternalSkillDto> getLatestExternalSkills() { return latestExternalSkills; }
-    public void setLatestExternalSkills(List<ExternalSkillDto> latestExternalSkills) { this.latestExternalSkills = latestExternalSkills; }
     public List<ArticleDto> getLatestArticles() { return latestArticles; }
     public void setLatestArticles(List<ArticleDto> latestArticles) { this.latestArticles = latestArticles; }
     public List<News> getLatestNews() { return latestNews; }

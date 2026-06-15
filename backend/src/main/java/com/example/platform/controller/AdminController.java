@@ -7,8 +7,6 @@ import com.example.platform.dto.AdminUserUpdateRequest;
 import com.example.platform.dto.ArticleDto;
 import com.example.platform.dto.CreateRuleRequest;
 import com.example.platform.dto.CreateSkillRequest;
-import com.example.platform.dto.ExternalSkillDto;
-import com.example.platform.dto.ExternalSkillWriteRequest;
 import com.example.platform.dto.PageResult;
 import com.example.platform.dto.RuleDto;
 import com.example.platform.dto.SkillAssetMetricsDto;
@@ -28,7 +26,6 @@ import com.example.platform.dto.UserRoleRequest;
 import com.example.platform.dto.AiToolDto;
 import com.example.platform.dto.McpServerDto;
 import com.example.platform.entity.AiTool;
-import com.example.platform.entity.ExternalSkill;
 import com.example.platform.entity.LearningArticle;
 import com.example.platform.entity.Skill;
 import com.example.platform.service.AibaseNewsScraperService;
@@ -36,11 +33,9 @@ import com.example.platform.service.AiToolService;
 import com.example.platform.service.AiToolScraperService;
 import com.example.platform.service.McpScraperService;
 import com.example.platform.service.McpServerService;
-import com.example.platform.service.ExternalSkillScraperService;
 import com.example.platform.service.NewsService;
 import com.example.platform.service.OpenLmArenaScraperService;
 import com.example.platform.service.ArticleService;
-import com.example.platform.service.ExternalSkillService;
 import com.example.platform.service.RuleService;
 import com.example.platform.service.SkillGovernanceService;
 import com.example.platform.service.SkillPackageImportService;
@@ -65,31 +60,27 @@ public class AdminController {
 
     private final SkillService skillService;
     private final RuleService ruleService;
-    private final ExternalSkillService externalSkillService;
     private final ArticleService articleService;
     private final AibaseNewsScraperService aibaseNewsScraperService;
     private final AiToolScraperService aiToolScraperService;
     private final AiToolService aiToolService;
     private final McpScraperService mcpScraperService;
     private final McpServerService mcpServerService;
-    private final ExternalSkillScraperService externalSkillScraperService;
     private final NewsService newsService;
     private final OpenLmArenaScraperService openLmArenaScraperService;
     private final SkillGovernanceService skillGovernanceService;
     private final SkillPackageImportService skillPackageImportService;
     private final UserAdminService userAdminService;
 
-    public AdminController(SkillService skillService, RuleService ruleService, ExternalSkillService externalSkillService, ArticleService articleService, AibaseNewsScraperService aibaseNewsScraperService, AiToolScraperService aiToolScraperService, AiToolService aiToolService, McpScraperService mcpScraperService, McpServerService mcpServerService, ExternalSkillScraperService externalSkillScraperService, NewsService newsService, OpenLmArenaScraperService openLmArenaScraperService, SkillGovernanceService skillGovernanceService, SkillPackageImportService skillPackageImportService, UserAdminService userAdminService) {
+    public AdminController(SkillService skillService, RuleService ruleService, ArticleService articleService, AibaseNewsScraperService aibaseNewsScraperService, AiToolScraperService aiToolScraperService, AiToolService aiToolService, McpScraperService mcpScraperService, McpServerService mcpServerService, NewsService newsService, OpenLmArenaScraperService openLmArenaScraperService, SkillGovernanceService skillGovernanceService, SkillPackageImportService skillPackageImportService, UserAdminService userAdminService) {
         this.skillService = skillService;
         this.ruleService = ruleService;
-        this.externalSkillService = externalSkillService;
         this.articleService = articleService;
         this.aibaseNewsScraperService = aibaseNewsScraperService;
         this.aiToolScraperService = aiToolScraperService;
         this.aiToolService = aiToolService;
         this.mcpScraperService = mcpScraperService;
         this.mcpServerService = mcpServerService;
-        this.externalSkillScraperService = externalSkillScraperService;
         this.newsService = newsService;
         this.openLmArenaScraperService = openLmArenaScraperService;
         this.skillGovernanceService = skillGovernanceService;
@@ -310,37 +301,6 @@ public class AdminController {
         return ApiResponse.ok(new PageResult<>(p.getContent(), p.getTotalElements()));
     }
 
-    @GetMapping("/external-skills")
-    public ApiResponse<PageResult<ExternalSkillDto>> listExternalSkills(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<ExternalSkillDto> p = externalSkillService.listAllForAdmin(keyword, page, size);
-        return ApiResponse.ok(new PageResult<>(p.getContent(), p.getTotalElements()));
-    }
-
-    @GetMapping("/external-skills/{id}")
-    public ApiResponse<ExternalSkillDto> getExternalSkill(@PathVariable Long id) {
-        return ApiResponse.ok(externalSkillService.getDtoByIdForAdmin(id));
-    }
-
-    @PostMapping("/scrape/external-skills")
-    public ApiResponse<ScrapeResult> scrapeExternalSkills() {
-        externalSkillScraperService.doScrapeAsync();
-        return ApiResponse.ok(new ScrapeResult("started", "外部 Skill 爬取任务已在后台启动"));
-    }
-
-    @GetMapping("/scrape-status/external-skills")
-    public ApiResponse<ScrapeStatusResponse> getExternalSkillsScrapeStatus() {
-        var status = externalSkillScraperService.getLastStatus();
-        return ApiResponse.ok(new ScrapeStatusResponse(
-                status.status(),
-                status.added(),
-                status.error(),
-                status.finishedAt() != null ? status.finishedAt().toString() : null
-        ));
-    }
-
     @PostMapping("/scrape/llm-leaderboard")
     public ApiResponse<ScrapeResult> scrapeLlmLeaderboard() {
         openLmArenaScraperService.doScrapeAsync();
@@ -465,29 +425,4 @@ public class AdminController {
         return ApiResponse.ok(ruleService.adminUpdate(id, req));
     }
 
-    @PostMapping("/external-skills")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<ExternalSkill> createExternalSkill(@Valid @RequestBody ExternalSkillWriteRequest req) {
-        ExternalSkill e = externalSkillService.create(req);
-        return ApiResponse.ok(e);
-    }
-
-    @PutMapping("/external-skills/{id}")
-    public ApiResponse<ExternalSkill> updateExternalSkill(@PathVariable Long id, @Valid @RequestBody ExternalSkillWriteRequest req) {
-        ExternalSkill e = externalSkillService.update(id, req);
-        return ApiResponse.ok(e);
-    }
-
-    @DeleteMapping("/external-skills/{id}")
-    public ApiResponse<Void> deleteExternalSkill(@PathVariable Long id) {
-        externalSkillService.delete(id);
-        return ApiResponse.ok(null);
-    }
-
-    /** 批量清理所有外部 Skill 的 content 中的「▼…复制代码」块（与爬虫同一正则），返回被更新的条数。 */
-    @PostMapping("/external-skills/clean-content")
-    public ApiResponse<Integer> cleanExternalSkillsContent() {
-        int updated = externalSkillService.cleanAllContentsCopyCodeBlock();
-        return ApiResponse.ok(updated);
-    }
 }

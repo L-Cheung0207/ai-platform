@@ -37,22 +37,6 @@
         @success="onContributorLoginSuccess"
       />
 
-      <!-- 类型筛选：全部 | 内部 | 外部 -->
-      <div class="mb-6 flex flex-wrap gap-2 justify-center">
-        <button
-          v-for="opt in typeOptions"
-          :key="opt.value"
-          type="button"
-          :class="[
-            'px-4 py-2 rounded-full text-[14px] font-medium transition-all duration-200',
-            typeFilter === opt.value ? 'bg-primary text-white' : 'bg-[#f3f4f6] text-[#4b5563] hover:bg-[#e5e7eb]'
-          ]"
-          @click="setTypeFilter(opt.value)"
-        >
-          {{ opt.label }}
-        </button>
-      </div>
-
       <!-- 标签筛选 -->
       <div v-if="tagList.length > 0" class="skills-tag-filter mb-8">
         <button
@@ -99,22 +83,21 @@
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <router-link
           v-for="s in displayItems"
-          :key="s.type + '-' + s.id"
-          :to="s.type === 'internal' ? '/skills/' + s.id : '/external-skills/' + s.id"
+          :key="s.id"
+          :to="'/skills/' + s.id"
           class="block p-5 bg-white border border-[#e5e7eb] rounded-xl hover:border-primary hover:shadow-[0_4px_12px_rgba(37,99,235,0.1)] transition-all duration-200"
         >
           <div class="font-semibold text-[16px] text-[#1f2937] mb-2 truncate">{{ s.name }}</div>
           <div class="flex flex-wrap gap-2 mb-2">
             <span v-for="t in (s.tagNames || []).slice(0, 4)" :key="t" class="tag-chip tag-chip--sm">{{ t }}</span>
-            <span class="tag-chip tag-chip--sm tag-chip--muted">{{ s.type === 'internal' ? '内部' : '外部' }}</span>
-            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm tag-chip--asset">{{ assetLevelLabel(s.assetLevel) }}</span>
-            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm tag-chip--status">{{ lifecycleLabel(s.lifecycleStatus) }}</span>
-            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm">{{ skillCategoryLabel(s.skillCategory) }}</span>
-            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm tag-chip--priority">{{ buildPriorityLabel(s.buildPriority) }}</span>
-            <span v-if="s.type === 'internal'" class="tag-chip tag-chip--sm tag-chip--validation">{{ validationStatusLabel(s.templateValidationStatus) }}</span>
+            <span class="tag-chip tag-chip--sm tag-chip--asset">{{ assetLevelLabel(s.assetLevel) }}</span>
+            <span class="tag-chip tag-chip--sm tag-chip--status">{{ lifecycleLabel(s.lifecycleStatus) }}</span>
+            <span class="tag-chip tag-chip--sm">{{ skillCategoryLabel(s.skillCategory) }}</span>
+            <span class="tag-chip tag-chip--sm tag-chip--priority">{{ buildPriorityLabel(s.buildPriority) }}</span>
+            <span class="tag-chip tag-chip--sm tag-chip--validation">{{ validationStatusLabel(s.templateValidationStatus) }}</span>
           </div>
           <p class="text-[14px] text-[#6b7280] leading-relaxed line-clamp-2">{{ s.description || '暂无描述' }}</p>
-          <div v-if="s.type === 'internal'" class="mt-4 flex items-center justify-between text-[12px] text-[#9ca3af]">
+          <div class="mt-4 flex items-center justify-between text-[12px] text-[#9ca3af]">
             <span>{{ s.teamName || '未分配团队' }}</span>
             <span>{{ s.nextReviewAt ? '复审 ' + s.nextReviewAt : riskLabel(s.riskLevel) }}</span>
           </div>
@@ -155,19 +138,12 @@ const total = ref(0)
 const page = ref(1)
 const size = ref(20)
 const keyword = ref(route.query.keyword || '')
-const typeFilter = ref('all') // 'all' | 'internal' | 'external'
 const loading = ref(false)
 const error = ref('')
 const contributorWorkspaceVisible = ref(false)
 const loginDialogVisible = shallowRef(false)
 const tagList = ref([])
 const selectedTagIds = ref([])
-
-const typeOptions = [
-  { value: 'all', label: '全部' },
-  { value: 'internal', label: '内部' },
-  { value: 'external', label: '外部' },
-]
 
 const assetLevelOptions = [
   { value: 'TEAM', label: '团队级' },
@@ -202,19 +178,7 @@ const validationOptions = [
   { value: 'FAILED', label: '模板未通过' },
 ]
 
-const displayItems = computed(() => {
-  if (typeFilter.value === 'all') {
-    const start = (page.value - 1) * size.value
-    return items.value.slice(start, start + size.value)
-  }
-  return items.value
-})
-
-function setTypeFilter(v) {
-  typeFilter.value = v
-  page.value = 1
-  load()
-}
+const displayItems = computed(() => items.value)
 
 async function loadTags() {
   try {
@@ -229,34 +193,13 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const type = typeFilter.value
-    const params = { page: 1, size: 500 }
+    const params = { page: page.value, size: size.value }
     if (keyword.value) params.keyword = keyword.value
     if (selectedTagIds.value.length > 0) params.tags = selectedTagIds.value.join(',')
 
-    if (type === 'internal') {
-      const data = await api.get('/skills', { params: { ...params, page: page.value, size: size.value } })
-      items.value = (data.items || []).map((s) => ({ ...s, type: 'internal' }))
-      total.value = data.total || 0
-    } else if (type === 'external') {
-      const data = await api.get('/external-skills', { params: { ...params, page: page.value, size: size.value } })
-      items.value = (data.items || []).map((s) => ({ ...s, type: 'external' }))
-      total.value = data.total || 0
-    } else {
-      const [skillsRes, extRes] = await Promise.all([
-        api.get('/skills', { params }),
-        api.get('/external-skills', { params }),
-      ])
-      const internal = (skillsRes?.items || []).map((s) => ({ ...s, type: 'internal' }))
-      const external = (extRes?.items || []).map((s) => ({ ...s, type: 'external' }))
-      const merged = [...internal, ...external].sort((a, b) => {
-        const at = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
-        const bt = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
-        return bt - at
-      })
-      items.value = merged
-      total.value = merged.length
-    }
+    const data = await api.get('/skills', { params })
+    items.value = data.items || []
+    total.value = data.total || 0
   } catch (e) {
     error.value = e.message || '加载失败'
     items.value = []
