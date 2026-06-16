@@ -41,6 +41,9 @@ public class GitHubTrendingEntry {
     @Column(length = 1000)
     private String description;
 
+    @Column(name = "description_cn", length = 1000)
+    private String descriptionCn;
+
     @Column(length = 100)
     private String language;
 
@@ -89,6 +92,8 @@ public class GitHubTrendingEntry {
     public void setRepoUrl(String repoUrl) { this.repoUrl = repoUrl; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getDescriptionCn() { return descriptionCn; }
+    public void setDescriptionCn(String descriptionCn) { this.descriptionCn = descriptionCn; }
     public String getLanguage() { return language; }
     public void setLanguage(String language) { this.language = language; }
     public Integer getStars() { return stars; }

@@ -12,6 +12,7 @@ public class GitHubTrendingDto {
     private String repoFullName;
     private String repoUrl;
     private String description;
+    private String descriptionCn;
     private String language;
     private Integer stars;
     private Integer forks;
@@ -32,6 +33,7 @@ public class GitHubTrendingDto {
         dto.setRepoFullName(entry.getRepoFullName());
         dto.setRepoUrl(entry.getRepoUrl());
         dto.setDescription(entry.getDescription());
+        dto.setDescriptionCn(entry.getDescriptionCn());
         dto.setLanguage(entry.getLanguage());
         dto.setStars(entry.getStars());
         dto.setForks(entry.getForks());
@@ -58,6 +60,8 @@ public class GitHubTrendingDto {
     public void setRepoUrl(String repoUrl) { this.repoUrl = repoUrl; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getDescriptionCn() { return descriptionCn; }
+    public void setDescriptionCn(String descriptionCn) { this.descriptionCn = descriptionCn; }
     public String getLanguage() { return language; }
     public void setLanguage(String language) { this.language = language; }
     public Integer getStars() { return stars; }

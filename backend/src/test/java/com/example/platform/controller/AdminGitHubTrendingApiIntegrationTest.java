@@ -193,6 +193,7 @@ class AdminGitHubTrendingApiIntegrationTest {
         GitHubTrendingScraperService githubTrendingScraperService() {
             return new TestGitHubTrendingScraperService();
         }
+
     }
 
     private void waitForSyncToComplete() throws InterruptedException {

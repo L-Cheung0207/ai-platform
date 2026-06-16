@@ -20,8 +20,6 @@ public interface SkillRepository extends JpaRepository<Skill, Long> {
 
     List<Skill> findTop10ByVisibilityOrderByUpdatedAtDesc(Visibility visibility);
 
-    List<Skill> findTop10ByVisibilityAndLifecycleStatusOrderByUpdatedAtDesc(Visibility visibility, LifecycleStatus lifecycleStatus);
-
     Page<Skill> findByUploaderIdOrderByUpdatedAtDesc(Long uploaderId, Pageable pageable);
 
     Page<Skill> findByVisibilityAndUploaderIdOrderByUpdatedAtDesc(Visibility visibility, Long uploaderId, Pageable pageable);

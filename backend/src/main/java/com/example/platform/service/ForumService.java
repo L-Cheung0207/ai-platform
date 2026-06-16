@@ -5,7 +5,6 @@ import com.example.platform.dto.*;
 import com.example.platform.entity.*;
 import com.example.platform.entity.ForumPost.PostStatus;
 import com.example.platform.entity.ForumPost.PostType;
-import com.example.platform.entity.ForumPost.RelatedType;
 import com.example.platform.entity.ForumReaction.ReactionType;
 import com.example.platform.entity.ForumReaction.TargetType;
 import com.example.platform.entity.ForumReply.ReplyStatus;
@@ -415,9 +414,6 @@ public class ForumService {
         post.setContent(trim(req.getContent()));
         post.setPostType(parseEnum(PostType.class, req.getPostType(), PostType.DISCUSSION));
         post.setCategory(category);
-        post.setRelatedType(parseEnum(RelatedType.class, req.getRelatedType(), null));
-        post.setRelatedId(req.getRelatedId());
-        post.setRelatedTitle(trim(req.getRelatedTitle()));
         post.getTags().clear();
         post.getTags().addAll(resolveTags(req.getTagIds()));
         post.setStatus(post.getStatus() == PostStatus.DELETED ? PostStatus.DELETED : PostStatus.NORMAL);

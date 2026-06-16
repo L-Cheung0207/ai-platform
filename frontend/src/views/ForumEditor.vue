@@ -35,23 +35,6 @@
             </el-form-item>
           </div>
 
-          <div class="forum-editor-related">
-            <el-form-item label="关联内容类型">
-              <el-select v-model="form.relatedType" class="w-full" clearable placeholder="可选">
-                <el-option label="Skill" value="SKILL" />
-                <el-option label="Rule" value="RULE" />
-                <el-option label="AI知识库" value="ARTICLE" />
-                <el-option label="AI 工具" value="AI_TOOL" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="关联 ID">
-              <el-input-number v-model="form.relatedId" class="w-full" :min="1" controls-position="right" />
-            </el-form-item>
-            <el-form-item label="关联标题">
-              <el-input v-model="form.relatedTitle" placeholder="例如：java-code-review / Rule 名称 / 工具名" />
-            </el-form-item>
-          </div>
-
           <el-form-item label="正文" required>
             <RichTextEditor v-model="form.content" content-type="MARKDOWN" />
           </el-form-item>
@@ -70,7 +53,6 @@
         <ul>
           <li>提问帖尽量写清上下文、复现步骤和你已经尝试过的方案。</li>
           <li>分享帖建议把结论、适用场景和风险边界写在前面。</li>
-          <li>如果这个讨论能沉淀成 Skill / Rule，记得填写关联内容。</li>
         </ul>
       </aside>
     </main>
@@ -98,9 +80,6 @@ const form = ref({
   postType: 'DISCUSSION',
   categoryId: null,
   tagIds: [],
-  relatedType: '',
-  relatedId: null,
-  relatedTitle: '',
 })
 
 onMounted(async () => {
@@ -131,9 +110,6 @@ async function loadPost() {
     postType: post.postType || 'DISCUSSION',
     categoryId: post.categoryId,
     tagIds: (post.tags || []).map((tag) => tag.id),
-    relatedType: post.relatedType || '',
-    relatedId: post.relatedId || null,
-    relatedTitle: post.relatedTitle || '',
   }
 }
 
@@ -162,9 +138,6 @@ async function save() {
       ...form.value,
       title,
       content,
-      relatedType: form.value.relatedType || null,
-      relatedId: form.value.relatedId || null,
-      relatedTitle: (form.value.relatedTitle || '').trim() || null,
     }
     const data = isEdit.value
       ? await api.put('/forum/posts/' + route.params.id, payload)
@@ -209,20 +182,14 @@ async function save() {
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
 }
 
-.forum-editor-grid,
-.forum-editor-related {
+.forum-editor-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
-.forum-editor-related {
-  grid-template-columns: 1fr 180px 1fr;
-}
-
 @media (max-width: 768px) {
-  .forum-editor-grid,
-  .forum-editor-related {
+  .forum-editor-grid {
     grid-template-columns: 1fr;
   }
 }

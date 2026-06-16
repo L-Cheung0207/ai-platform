@@ -273,6 +273,7 @@ class GitHubTrendingSyncServiceTest {
         entry.setRepoFullName(repoFullName);
         entry.setRepoUrl("https://github.com/" + repoFullName);
         entry.setDescription(description);
+        entry.setDescriptionCn("旧中文描述");
         entry.setLanguage("TypeScript");
         entry.setStars(100);
         entry.setForks(10);

@@ -33,9 +33,7 @@ public class TagService {
     }
 
     private List<Tag> mergeSkillTags() {
-        return tagRepository.findTagsUsedByVisibleSkills(
-                Skill.Visibility.VISIBLE,
-                Skill.LifecycleStatus.APPROVED);
+        return tagRepository.findTagsUsedByVisibleSkills(Skill.Visibility.VISIBLE);
     }
 
 

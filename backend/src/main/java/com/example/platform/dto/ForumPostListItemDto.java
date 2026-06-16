@@ -27,9 +27,6 @@ public class ForumPostListItemDto {
     private Long replyCount;
     private Long favoriteCount;
     private Boolean accepted;
-    private String relatedType;
-    private Long relatedId;
-    private String relatedTitle;
     private Instant lastReplyAt;
     private Instant lastActivityAt;
     private Instant createdAt;
@@ -60,9 +57,6 @@ public class ForumPostListItemDto {
         dto.setReplyCount(post.getReplyCount());
         dto.setFavoriteCount(post.getFavoriteCount());
         dto.setAccepted(post.getAcceptedReply() != null);
-        dto.setRelatedType(post.getRelatedType() != null ? post.getRelatedType().name() : null);
-        dto.setRelatedId(post.getRelatedId());
-        dto.setRelatedTitle(post.getRelatedTitle());
         dto.setLastReplyAt(post.getLastReplyAt());
         dto.setLastActivityAt(post.getLastActivityAt());
         dto.setCreatedAt(post.getCreatedAt());
@@ -114,12 +108,6 @@ public class ForumPostListItemDto {
     public void setFavoriteCount(Long favoriteCount) { this.favoriteCount = favoriteCount; }
     public Boolean getAccepted() { return accepted; }
     public void setAccepted(Boolean accepted) { this.accepted = accepted; }
-    public String getRelatedType() { return relatedType; }
-    public void setRelatedType(String relatedType) { this.relatedType = relatedType; }
-    public Long getRelatedId() { return relatedId; }
-    public void setRelatedId(Long relatedId) { this.relatedId = relatedId; }
-    public String getRelatedTitle() { return relatedTitle; }
-    public void setRelatedTitle(String relatedTitle) { this.relatedTitle = relatedTitle; }
     public Instant getLastReplyAt() { return lastReplyAt; }
     public void setLastReplyAt(Instant lastReplyAt) { this.lastReplyAt = lastReplyAt; }
     public Instant getLastActivityAt() { return lastActivityAt; }

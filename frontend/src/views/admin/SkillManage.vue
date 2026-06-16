@@ -1,19 +1,16 @@
 <template>
   <div>
     <h1 class="text-xl font-bold text-gray-800 mb-2">Skill 资产管理</h1>
-    <p class="text-gray-500 text-sm mb-4">管理员可维护 Skill 的层级、状态、复审和验证信息。visibility 字段只表示手动隐藏状态；前台展示是由 visibility 和生命周期共同计算出的派生状态。</p>
+    <p class="text-gray-500 text-sm mb-4">管理员可维护 Skill 的基础信息、模板内容和 GitLab 导入结果。前台隐现只由操作列里的隐藏/恢复控制。</p>
 
     <el-dialog v-model="editing" :title="editId ? '编辑 Skill 资产' : '新建 Skill 资产'" width="920" draggable class="admin-dialog">
-      <SkillAssetForm v-model="form" @submit="saveSkill" />
+      <SkillAssetForm v-model="form" hide-review-fields @submit="saveSkill" />
       <template #footer>
         <el-button native-type="button" @click="editing = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="saveSkill">保存</el-button>
       </template>
     </el-dialog>
 
-    <SkillReviewDialog v-model="reviewDialogVisible" :skill="selectedSkill" @saved="onGovernanceChanged" />
-    <SkillFeedbackDrawer v-model="feedbackDrawerVisible" :skill="selectedSkill" @updated="load" />
-    <SkillValidationDialog v-model="validationDialogVisible" :skill="selectedSkill" :report="validationReport" />
     <SkillPackageImportDialog v-model="importDialogVisible" @imported="onPackageImported" />
 
     <div class="admin-skills-toolbar">
@@ -39,7 +36,7 @@
       </div>
     </div>
     <el-table :data="items" stripe>
-      <el-table-column prop="name" label="名称">
+      <el-table-column prop="name" label="名称" min-width="260">
         <template #default="{ row }">
           <router-link :to="'/skills/' + row.id" class="text-primary hover:underline">{{ row.name }}</router-link>
         </template>
@@ -91,11 +88,6 @@
           <el-tag size="small" effect="plain">{{ creationSourceLabel(row.creationSource) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="复审" width="120">
-        <template #default="{ row }">
-          <span class="text-sm text-gray-600">{{ row.nextReviewAt || '—' }}</span>
-        </template>
-      </el-table-column>
       <el-table-column prop="visibility" label="visibility" width="110">
         <template #default="{ row }">
           <el-tag :type="row.visibility === 'VISIBLE' ? 'success' : 'info'" size="small">
@@ -103,7 +95,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="前台展示(派生)" width="130">
+      <el-table-column label="前台展示" width="130">
         <template #default="{ row }">
           <el-tag :type="isPubliclyVisible(row) ? 'success' : 'warning'" size="small">
             {{ isPubliclyVisible(row) ? '前台可见' : '前台隐藏' }}
@@ -113,9 +105,6 @@
       <el-table-column label="操作" width="340">
         <template #default="{ row }">
           <el-button size="small" link type="primary" @click="startEdit(row)">编辑</el-button>
-          <el-button size="small" link type="primary" :loading="validatingId === row.id" @click="validateTemplate(row)">校验</el-button>
-          <el-button size="small" link type="primary" @click="openReview(row)">评审</el-button>
-          <el-button size="small" link type="primary" @click="openFeedback(row)">反馈</el-button>
           <el-button v-if="row.visibility === 'VISIBLE'" size="small" link type="primary" @click="hide(row.id)">隐藏</el-button>
           <el-button v-else size="small" link type="primary" @click="unhide(row.id)">恢复可见</el-button>
           <el-button size="small" link type="danger" @click="remove(row.id)">永久删除</el-button>
@@ -143,9 +132,6 @@ import { ref, onMounted } from 'vue'
 import api from '../../services/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import SkillAssetForm from '../../components/skills/SkillAssetForm.vue'
-import SkillReviewDialog from '../../components/skills/SkillReviewDialog.vue'
-import SkillFeedbackDrawer from '../../components/skills/SkillFeedbackDrawer.vue'
-import SkillValidationDialog from '../../components/skills/SkillValidationDialog.vue'
 import SkillPackageImportDialog from '../../components/skills/SkillPackageImportDialog.vue'
 
 const items = ref([])
@@ -162,13 +148,7 @@ const editId = ref(null)
 const form = ref(createEmptyForm())
 const saving = ref(false)
 const error = ref('')
-const selectedSkill = ref(null)
-const reviewDialogVisible = ref(false)
-const feedbackDrawerVisible = ref(false)
-const validationDialogVisible = ref(false)
 const importDialogVisible = ref(false)
-const validationReport = ref(null)
-const validatingId = ref(null)
 
 const assetLevelOptions = [
   { value: 'TEAM', label: '团队' },
@@ -388,38 +368,8 @@ async function load() {
   }
 }
 
-function openReview(row) {
-  selectedSkill.value = row
-  reviewDialogVisible.value = true
-}
-
-function openFeedback(row) {
-  selectedSkill.value = row
-  feedbackDrawerVisible.value = true
-}
-
-async function onGovernanceChanged() {
-  await load()
-}
-
 async function onPackageImported() {
   await load()
-}
-
-async function validateTemplate(row) {
-  validatingId.value = row.id
-  selectedSkill.value = row
-  error.value = ''
-  try {
-    validationReport.value = await api.post('/admin/skills/' + row.id + '/validate-template')
-    validationDialogVisible.value = true
-    ElMessage.success(validationReport.value.passed ? '模板校验通过' : '模板校验未通过')
-    await load()
-  } catch (e) {
-    error.value = e.message || '模板校验失败'
-  } finally {
-    validatingId.value = null
-  }
 }
 
 async function hide(id) {
@@ -505,7 +455,7 @@ function priorityTagType(value) {
 }
 
 function isPubliclyVisible(row) {
-  return row?.visibility === 'VISIBLE' && row?.lifecycleStatus === 'APPROVED'
+  return row?.visibility === 'VISIBLE'
 }
 
 function validationTagType(value) {

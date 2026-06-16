@@ -1,6 +1,8 @@
 package com.example.platform.config;
 
 import com.example.platform.entity.Category;
+import com.example.platform.entity.ForumPost;
+import com.example.platform.entity.LearningArticle;
 import com.example.platform.entity.Skill;
 import com.example.platform.entity.Skill.AssetLevel;
 import com.example.platform.entity.Skill.BuildPriority;
@@ -23,6 +25,8 @@ import com.example.platform.entity.User;
 import com.example.platform.entity.ForumCategory;
 import com.example.platform.repository.CategoryRepository;
 import com.example.platform.repository.ForumCategoryRepository;
+import com.example.platform.repository.ForumPostRepository;
+import com.example.platform.repository.LearningArticleRepository;
 import com.example.platform.repository.SkillFeedbackRepository;
 import com.example.platform.repository.SkillRepository;
 import com.example.platform.repository.SkillReviewRepository;
@@ -48,6 +52,8 @@ public class DataInitializer implements ApplicationRunner {
     private final SkillRepository skillRepository;
     private final TagRepository tagRepository;
     private final ForumCategoryRepository forumCategoryRepository;
+    private final LearningArticleRepository learningArticleRepository;
+    private final ForumPostRepository forumPostRepository;
     private final SkillReviewRepository skillReviewRepository;
     private final SkillFeedbackRepository skillFeedbackRepository;
     private final SkillUsageEventRepository skillUsageEventRepository;
@@ -57,6 +63,8 @@ public class DataInitializer implements ApplicationRunner {
     public DataInitializer(UserRepository userRepository, CategoryRepository categoryRepository,
                            SkillRepository skillRepository, TagRepository tagRepository,
                            ForumCategoryRepository forumCategoryRepository,
+                           LearningArticleRepository learningArticleRepository,
+                           ForumPostRepository forumPostRepository,
                            SkillReviewRepository skillReviewRepository,
                            SkillFeedbackRepository skillFeedbackRepository,
                            SkillUsageEventRepository skillUsageEventRepository,
@@ -66,6 +74,8 @@ public class DataInitializer implements ApplicationRunner {
         this.skillRepository = skillRepository;
         this.tagRepository = tagRepository;
         this.forumCategoryRepository = forumCategoryRepository;
+        this.learningArticleRepository = learningArticleRepository;
+        this.forumPostRepository = forumPostRepository;
         this.skillReviewRepository = skillReviewRepository;
         this.skillFeedbackRepository = skillFeedbackRepository;
         this.skillUsageEventRepository = skillUsageEventRepository;
@@ -79,6 +89,7 @@ public class DataInitializer implements ApplicationRunner {
         seedCategoriesIfEmpty();
         seedForumCategoriesIfEmpty();
         seedAdminIfNone();
+        seedDemoContentIfEnabled();
         seedPilotSkillsIfEnabled();
     }
 
@@ -135,6 +146,63 @@ public class DataInitializer implements ApplicationRunner {
         admin.setRole(User.Role.ADMIN);
         admin.setSkillGovernanceRole(ReviewerRole.SECURITY_QUALITY);
         userRepository.save(admin);
+    }
+
+    private void seedDemoContentIfEnabled() {
+        if (!environment.getProperty("app.seed.demo-content", Boolean.class, false)) {
+            return;
+        }
+        User admin = userRepository.findFirstByRole(User.Role.ADMIN)
+                .orElseThrow(() -> new IllegalStateException("Admin user must exist before seeding demo content"));
+        seedDemoArticlesIfEmpty(admin);
+        seedDemoForumPostsIfEmpty(admin);
+    }
+
+    private void seedDemoArticlesIfEmpty(User author) {
+        if (learningArticleRepository.count() > 0) {
+            return;
+        }
+        for (int i = 0; i < demoArticles().size(); i++) {
+            DemoArticle demo = demoArticles().get(i);
+            LearningArticle article = new LearningArticle();
+            article.setTitle(demo.title());
+            article.setContent(demo.content());
+            article.setAuthor(author);
+            article.setStatus(LearningArticle.Status.PUBLISHED);
+            article.setContentType(LearningArticle.ContentType.MARKDOWN);
+            Instant timestamp = Instant.now().minusSeconds((long) (10 - i) * 7200);
+            article.setCreatedAt(timestamp);
+            article.setUpdatedAt(timestamp.plusSeconds(1800));
+            learningArticleRepository.save(article);
+        }
+    }
+
+    private void seedDemoForumPostsIfEmpty(User author) {
+        if (forumPostRepository.count() > 0) {
+            return;
+        }
+        List<ForumCategory> categories = forumCategoryRepository.findByEnabledTrueOrderBySortOrderAscNameAsc();
+        if (categories.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < demoForumPosts().size(); i++) {
+            DemoForumPost demo = demoForumPosts().get(i);
+            ForumPost post = new ForumPost();
+            post.setTitle(demo.title());
+            post.setContent(demo.content());
+            post.setAuthor(author);
+            post.setCategory(categories.get(i % categories.size()));
+            post.setPostType(demo.postType());
+            post.setStatus(ForumPost.PostStatus.NORMAL);
+            post.setPinned(demo.pinned());
+            post.setFeatured(demo.featured());
+            post.setViewCount(40L + i * 13L);
+            post.setLikeCount(3L + i);
+            post.setReplyCount((long) (i % 5));
+            post.setFavoriteCount(1L + (i % 4));
+            post.setLastActivityAt(Instant.now().minusSeconds((long) (10 - i) * 5400));
+            forumPostRepository.save(post);
+        }
     }
 
     private void seedPilotSkillsIfEnabled() {
@@ -460,6 +528,139 @@ public class DataInitializer implements ApplicationRunner {
                 + body;
     }
 
+    private List<DemoArticle> demoArticles() {
+        return List.of(
+                new DemoArticle("MCP 接入排障手册：从 401 到稳定可用",
+                        """
+                        ## 适用场景
+                        当团队第一次把内部服务接入 MCP Server，最容易卡在鉴权、跨域和 schema 对齐。
+
+                        ## 排查顺序
+                        1. 先确认 token 是否真的进入请求头。
+                        2. 再看服务端是否按预期解析角色和租户。
+                        3. 最后比对 tool schema，避免字段名漂移。
+
+                        ## 建议落地
+                        - 给每个工具补最小 smoke test。
+                        - 把 401、403、422 区分写进日志。
+                        - 在开发环境保留一套可复现请求样例。
+                        """),
+                new DemoArticle("提示词评审清单：上线前至少看这 8 项",
+                        """
+                        ## 核心检查项
+                        - 目标是否单一
+                        - 输入约束是否明确
+                        - 失败时是否有回退策略
+                        - 是否暴露内部实现细节
+
+                        ## 常见问题
+                        最容易被忽略的是输出边界，尤其是“允许自由发挥”这类描述，往往会把结果拉散。
+                        """),
+                new DemoArticle("前端埋点命名约定：减少一半复盘沟通成本",
+                        """
+                        推荐统一使用 `页面.模块.动作` 形式命名，例如 `forum.editor.submit`。
+
+                        这样做的好处：
+                        - 查询维度稳定
+                        - 跨端对齐更容易
+                        - 复盘时不需要额外翻译事件语义
+                        """),
+                new DemoArticle("知识库文章怎么写得更像团队资产",
+                        """
+                        一篇可复用的知识库文章至少要回答三件事：
+                        1. 这个问题为什么值得记下来
+                        2. 正确做法是什么
+                        3. 什么时候不要照着做
+
+                        如果缺少“不适用场景”，文章通常很快就会过时。
+                        """),
+                new DemoArticle("用灰度发布验证 AI 功能，不要直接赌全量",
+                        """
+                        建议按三层指标观察：
+                        - 质量：任务完成率、人工回退率
+                        - 成本：平均调用次数、token 消耗
+                        - 稳定性：超时率、重试率
+
+                        先验证趋势，再决定是否扩量。
+                        """),
+                new DemoArticle("论坛问答的高质量模板",
+                        """
+                        ## 推荐结构
+                        - 背景
+                        - 现象
+                        - 已尝试方案
+                        - 希望获得的帮助
+
+                        这样能让回答者更快进入问题上下文，而不是先补齐问题描述。
+                        """),
+                new DemoArticle("AI 工具选型时，先比约束，再比功能",
+                        """
+                        常见误区是先看 feature list。
+                        更有效的顺序通常是：
+                        1. 数据安全要求
+                        2. 集成方式
+                        3. 成本模型
+                        4. 真实体验
+                        """),
+                new DemoArticle("从一次 500 错误复盘里提炼出来的后端守则",
+                        """
+                        - 参数校验前置
+                        - 三方依赖要带超时和兜底
+                        - 管理接口错误要可定位
+                        - 能返回 4xx 的不要一律打成 500
+                        """),
+                new DemoArticle("如何给内部技能写一段真正有用的说明",
+                        """
+                        好说明不是介绍“它很强”，而是明确：
+                        - 什么时候用
+                        - 给它什么输入
+                        - 产出长什么样
+                        - 哪些结论必须人工确认
+                        """),
+                new DemoArticle("周报自动生成前，需要先统一字段口径",
+                        """
+                        如果“新增用户”“活跃用户”“触达用户”各自定义不一致，再好的自动化都只能放大混乱。
+
+                        建议先把字段释义沉淀到知识库，再做报表汇总。
+                        """)
+        );
+    }
+
+    private List<DemoForumPost> demoForumPosts() {
+        return List.of(
+                new DemoForumPost("大家的 MCP Server 首次联调都踩过哪些坑？",
+                        "我们这周在接内部工具时，遇到了 token 透传、schema 版本不一致和超时重试三个问题。想收集团队里更高频的坑位，顺便整理成排障清单。",
+                        ForumPost.PostType.DISCUSSION, true, false),
+                new DemoForumPost("知识库文章发布前，是否需要统一模板？",
+                        "现在每个人写法差异很大，有的是结论导向，有的是流水账。大家更倾向于强模板，还是保留自由度？希望听听一线使用体验。",
+                        ForumPost.PostType.QUESTION, false, false),
+                new DemoForumPost("分享：把 AI 排障记录拆成症状/根因/验证 后，复盘效率明显高了",
+                        "最近两次线上问题复盘都用了这个结构。最大的变化是大家不再围着现象打转，而是更容易把结论沉淀成后续可复用资产。",
+                        ForumPost.PostType.SHARE, false, true),
+                new DemoForumPost("论坛发帖 403 的根因最终是 token 没补上",
+                        "定位结果是前端路由虽然判定了已登录，但在部分 requiresAuth 页面没有重新设置 axios 默认 Authorization，导致发帖接口被后端按未认证请求处理。",
+                        ForumPost.PostType.SHARE, false, false),
+                new DemoForumPost("想把 AI 工具页做成分层推荐，应该按什么维度排？",
+                        "我目前想到的是按上手成本、接入复杂度、适用团队规模三个维度。有没有更适合内部场景的排序方式？",
+                        ForumPost.PostType.QUESTION, false, false),
+                new DemoForumPost("讨论：技能市场里是否要突出‘已验证’标签",
+                        "现在列表里所有技能视觉权重差不多，但实际可直接落地的比例并不一样。大家觉得是否需要更强的状态区分？",
+                        ForumPost.PostType.DISCUSSION, false, false),
+                new DemoForumPost("分享一个写提示词评审意见的做法",
+                        "我会强制自己把评审意见拆成三类：需求缺失、约束不足、验证不充分。这样作者拿到反馈后更容易按类修复。",
+                        ForumPost.PostType.SHARE, false, true),
+                new DemoForumPost("论坛分类还需要继续细分吗？",
+                        "目前分类数量不多，优点是简单；缺点是热门帖子容易混在一起。想听听大家对‘少分类 + 强标签’这套方案的看法。",
+                        ForumPost.PostType.DISCUSSION, false, false),
+                new DemoForumPost("有没有人愿意共享一套 AI 功能灰度观察指标？",
+                        "我们准备给新的智能推荐能力做灰度，但还在讨论到底看点击、完成率还是人工回退。欢迎把你们用过的指标贴出来。",
+                        ForumPost.PostType.QUESTION, false, false),
+                new DemoForumPost("从这次论坛改版里学到的一件事：展示项越多，发帖门槛越高",
+                        "去掉关联内容之后，编辑页明显更聚焦。后续如果再加功能，我会先问一句：它是在帮助表达，还是只是让表单更重？",
+                        ForumPost.PostType.SHARE, false, true)
+        );
+    }
+
     private record PilotSkill(
             String skillDirectory,
             String name,
@@ -486,4 +687,8 @@ public class DataInitializer implements ApplicationRunner {
             int sampleSavedMinutes,
             String feedback
     ) {}
+
+    private record DemoArticle(String title, String content) {}
+
+    private record DemoForumPost(String title, String content, ForumPost.PostType postType, boolean pinned, boolean featured) {}
 }

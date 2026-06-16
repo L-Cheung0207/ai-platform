@@ -1,4 +1,10 @@
 <script setup>
+const props = defineProps({
+  hideReviewFields: {
+    type: Boolean,
+    default: false,
+  },
+})
 const form = defineModel({ type: Object, required: true })
 const emit = defineEmits(['submit'])
 
@@ -89,6 +95,7 @@ function creationSourceLabel(value) {
     <section class="skill-form-section">
       <h3 class="skill-form-section__title">资产治理</h3>
       <el-alert
+        v-if="!props.hideReviewFields"
         title="已入库状态由模板校验通过后的评审自动产生"
         type="info"
         :closable="false"
@@ -101,7 +108,7 @@ function creationSourceLabel(value) {
             <el-option v-for="item in assetLevelOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="生命周期">
+        <el-form-item v-if="!props.hideReviewFields" label="生命周期">
           <el-select v-model="form.lifecycleStatus" class="w-full">
             <el-option
               v-for="item in lifecycleOptions"
@@ -112,7 +119,7 @@ function creationSourceLabel(value) {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="风险等级">
+        <el-form-item v-if="!props.hideReviewFields" label="风险等级">
           <el-select v-model="form.riskLevel" class="w-full">
             <el-option v-for="item in riskOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
@@ -124,7 +131,7 @@ function creationSourceLabel(value) {
             <el-option v-for="item in skillCategoryOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="建设优先级">
+        <el-form-item v-if="!props.hideReviewFields" label="建设优先级">
           <el-select v-model="form.buildPriority" class="w-full">
             <el-option v-for="item in buildPriorityOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
@@ -134,11 +141,11 @@ function creationSourceLabel(value) {
         <el-form-item label="维护人">
           <el-input v-model="form.maintainer" maxlength="100" />
         </el-form-item>
-        <el-form-item label="团队/业务线">
+        <el-form-item v-if="!props.hideReviewFields" label="团队/业务线">
           <el-input v-model="form.teamName" maxlength="120" />
         </el-form-item>
       </div>
-      <div class="skill-form-grid">
+      <div v-if="!props.hideReviewFields" class="skill-form-grid">
         <el-form-item label="试用开始日期">
           <el-date-picker v-model="form.trialStartedAt" type="date" value-format="YYYY-MM-DD" class="w-full" />
         </el-form-item>
@@ -146,7 +153,7 @@ function creationSourceLabel(value) {
           <el-date-picker v-model="form.trialEndsAt" type="date" value-format="YYYY-MM-DD" class="w-full" />
         </el-form-item>
       </div>
-      <div class="skill-form-grid">
+      <div v-if="!props.hideReviewFields" class="skill-form-grid">
         <el-form-item label="最近复审日期">
           <el-date-picker v-model="form.lastReviewedAt" type="date" value-format="YYYY-MM-DD" class="w-full" />
         </el-form-item>
@@ -177,16 +184,16 @@ function creationSourceLabel(value) {
       <el-form-item label="执行步骤">
         <el-input v-model="form.executionSteps" type="textarea" :rows="6" maxlength="100000" show-word-limit />
       </el-form-item>
-      <el-form-item label="验证方式">
+      <el-form-item v-if="!props.hideReviewFields" label="验证方式">
         <el-input v-model="form.validationMethod" type="textarea" :rows="4" maxlength="20000" show-word-limit />
       </el-form-item>
-      <el-form-item label="质量标准">
+      <el-form-item v-if="!props.hideReviewFields" label="质量标准">
         <el-input v-model="form.qualityStandard" type="textarea" :rows="4" maxlength="20000" show-word-limit />
       </el-form-item>
       <el-form-item label="参考资料">
         <el-input v-model="form.referenceMaterials" type="textarea" :rows="4" maxlength="20000" show-word-limit />
       </el-form-item>
-      <el-form-item label="评审备注">
+      <el-form-item v-if="!props.hideReviewFields" label="评审备注">
         <el-input v-model="form.reviewNotes" type="textarea" :rows="3" maxlength="20000" show-word-limit />
       </el-form-item>
       <el-form-item label="Markdown 文档">

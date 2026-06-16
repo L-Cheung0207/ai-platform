@@ -89,7 +89,7 @@ public class SkillService {
         }
         String kw = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         AssetLevel level = parseEnum(AssetLevel.class, assetLevel, "资产层级");
-        LifecycleStatus status = LifecycleStatus.APPROVED;
+        LifecycleStatus status = parseEnum(LifecycleStatus.class, lifecycleStatus, "生命周期状态");
         SkillCategory category = parseEnum(SkillCategory.class, skillCategory, "Skill 分类");
         BuildPriority priority = parseEnum(BuildPriority.class, buildPriority, "建设优先级");
         Pageable pageable = PageRequest.of(Math.max(0, page - 1), Math.min(50, Math.max(1, size)), Sort.by(Sort.Direction.DESC, "updatedAt"));
@@ -111,8 +111,8 @@ public class SkillService {
     @Transactional(readOnly = true)
     public SkillDto getPublicById(Long id) {
         Skill s = skillRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Skill 不存在"));
-        if (s.getVisibility() != Visibility.VISIBLE || s.getLifecycleStatus() != LifecycleStatus.APPROVED) {
-            throw new ResourceNotFoundException("Skill 不存在或尚未通过评审");
+        if (s.getVisibility() != Visibility.VISIBLE) {
+            throw new ResourceNotFoundException("Skill 不存在或已隐藏");
         }
         return SkillDto.fromEntity(s);
     }

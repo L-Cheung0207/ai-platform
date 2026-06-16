@@ -73,25 +73,64 @@ public class SkillPackageImportService {
             return new SkillPackageImportResultDto(null, packageValidation, null, null);
         }
 
+        SkillGitLabPublishResultDto gitLabPublication = publishImportedPackage(parsed);
         var existing = skillRepository.findFirstBySkillDirectoryIgnoreCase(parsed.skillDirectory());
         if (existing.isPresent()) {
-            SkillDto skill = updateExistingSkillFromPackage(existing.get(), parsed);
+            SkillDto skill = updateExistingSkillFromPackage(existing.get(), parsed, gitLabPublication);
             SkillTemplateValidationDto assetValidation = skillGovernanceService.validateTemplate(skill.getId());
             SkillDto savedSkill = skillService.getVisibleById(skill.getId());
-            return new SkillPackageImportResultDto(savedSkill, packageValidation, assetValidation, SkillGitLabPublishResultDto.disabled("已更新现有 Skill，未重新发布 GitLab"));
+            return new SkillPackageImportResultDto(savedSkill, packageValidation, assetValidation, gitLabPublication);
         }
 
         CreateSkillRequest request = buildCreateRequest(parsed);
+        applyGitLabPublication(request, gitLabPublication);
         SkillDto skill = skillService.createWithSource(request, uploaderId, CreationSource.SKILL_CREATOR_PACKAGE);
         SkillTemplateValidationDto assetValidation = skillGovernanceService.validateTemplate(skill.getId());
         SkillDto savedSkill = skillService.getVisibleById(skill.getId());
-        return new SkillPackageImportResultDto(savedSkill, packageValidation, assetValidation, SkillGitLabPublishResultDto.disabled("Skill 包已入库，评审通过后发布 GitLab"));
+        return new SkillPackageImportResultDto(savedSkill, packageValidation, assetValidation, gitLabPublication);
     }
 
-    private SkillDto updateExistingSkillFromPackage(com.example.platform.entity.Skill existing, ParsedPackage parsed) {
+    private SkillDto updateExistingSkillFromPackage(com.example.platform.entity.Skill existing,
+                                                    ParsedPackage parsed,
+                                                    SkillGitLabPublishResultDto gitLabPublication) {
         CreateSkillRequest request = buildCreateRequest(parsed);
         request.setLifecycleStatus(existing.getLifecycleStatus());
+        applyGitLabPublication(request, gitLabPublication);
         return skillService.adminUpdate(existing.getId(), request);
+    }
+
+    private SkillGitLabPublishResultDto publishImportedPackage(ParsedPackage parsed) {
+        return gitLabSkillPublishService.publishPackage(
+                parsed.skillDirectory(),
+                parsed.displayName(),
+                publishableFiles(parsed)
+        );
+    }
+
+    private void applyGitLabPublication(CreateSkillRequest request, SkillGitLabPublishResultDto publication) {
+        if (publication == null) {
+            return;
+        }
+        if ("PUBLISHED".equals(publication.status())) {
+            if (hasText(publication.repositoryUrl())) {
+                request.setSourceRepositoryUrl(publication.repositoryUrl());
+                request.setCloneCommand(buildGitCloneCommand(publication.repositoryUrl()));
+            }
+            appendReviewNote(request, "GitLab MR：" + publication.mergeRequestUrl());
+            appendReviewNote(request, "GitLab 分支：" + publication.branchName());
+            appendReviewNote(request, "GitLab 路径：" + publication.skillPath());
+            return;
+        }
+        appendReviewNote(request, publication.message());
+    }
+
+    private void appendReviewNote(CreateSkillRequest request, String note) {
+        String cleaned = blankToNull(note);
+        if (cleaned == null || cleaned.endsWith("：null")) {
+            return;
+        }
+        String current = blankToNull(request.getReviewNotes());
+        request.setReviewNotes(current == null ? cleaned : current + "\n" + cleaned);
     }
 
     private PackageFiles readPackage(MultipartFile file) {
@@ -228,7 +267,7 @@ public class SkillPackageImportService {
         request.setQualityStandard(section(parsed.skillMd(), "质量标准", "验收标准", "Quality"));
         request.setReferenceMaterials(referenceMaterials(parsed));
         request.setRiskLevel(RiskLevel.LOW);
-        request.setReviewNotes("由 skill-creator zip 包导入，待团队试用和评审。");
+        request.setReviewNotes("由 skill-creator zip 包导入。");
         request.setTags(tags(parsed));
         return request;
     }
@@ -306,7 +345,7 @@ public class SkillPackageImportService {
 
     private String buildGitCloneCommand(String repositoryUrl) {
         String cloneUrl = toGitCloneUrl(repositoryUrl);
-        return hasText(cloneUrl) ? "git clone " + cloneUrl : "git clone <待评审后生成的仓库地址>";
+        return hasText(cloneUrl) ? "git clone " + cloneUrl : "git clone <导入后生成的仓库地址>";
     }
 
     private String toGitCloneUrl(String repositoryUrl) {

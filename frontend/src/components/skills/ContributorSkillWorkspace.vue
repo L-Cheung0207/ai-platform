@@ -375,7 +375,7 @@ function formatDate(value) {
       class="contributor-edit-dialog"
       destroy-on-close
     >
-      <SkillAssetForm v-model="form" @submit="saveSkill" />
+      <SkillAssetForm v-model="form" hide-review-fields @submit="saveSkill" />
       <template #footer>
         <el-button @click="editing = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="saveSkill">保存</el-button>

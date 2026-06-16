@@ -7,11 +7,13 @@ import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,20 +26,35 @@ public class GitHubTrendingScraperService {
     private static final Pattern STARS_GAINED_PATTERN = Pattern.compile("([\\d,.]+\\s*[kKmM]?)\\s+stars?\\s+this\\s+(week|month)");
 
     interface DocumentFetcher {
-        Document fetch(String url, int timeoutMillis, String userAgent) throws IOException;
+        Document fetch(String url, FetchOptions options) throws IOException;
     }
 
+    record FetchOptions(int timeoutMillis, String userAgent, Optional<InetSocketAddress> proxyAddress) {}
+
     private final DocumentFetcher documentFetcher;
+    private final GitHubTrendingScraperProperties properties;
+
+    public GitHubTrendingScraperService(GitHubTrendingScraperProperties properties) {
+        this((url, options) -> {
+            org.jsoup.Connection connection = Jsoup.connect(url)
+                    .timeout(options.timeoutMillis())
+                    .userAgent(options.userAgent());
+            options.proxyAddress().ifPresent(proxy -> connection.proxy(proxy.getHostString(), proxy.getPort()));
+            return connection.get();
+        }, properties);
+    }
 
     public GitHubTrendingScraperService() {
-        this((url, timeoutMillis, userAgent) -> Jsoup.connect(url)
-                .timeout(timeoutMillis)
-                .userAgent(userAgent)
-                .get());
+        this(new GitHubTrendingScraperProperties(30_000, 2, null, null));
     }
 
     GitHubTrendingScraperService(DocumentFetcher documentFetcher) {
+        this(documentFetcher, new GitHubTrendingScraperProperties(30_000, 2, null, null));
+    }
+
+    GitHubTrendingScraperService(DocumentFetcher documentFetcher, GitHubTrendingScraperProperties properties) {
         this.documentFetcher = documentFetcher;
+        this.properties = properties;
     }
 
     public record TrendingRow(
@@ -60,8 +77,33 @@ public class GitHubTrendingScraperService {
 
     public List<TrendingRow> fetch(GitHubTrendingEntry.Period period, String languageFilter) throws IOException {
         String url = buildTrendingUrl(period, languageFilter);
-        Document document = documentFetcher.fetch(url, FETCH_TIMEOUT_MILLIS, FETCH_USER_AGENT);
+        Document document = fetchWithRetry(url);
         return parseTrendingHtml(document.html(), period);
+    }
+
+    private Document fetchWithRetry(String url) throws IOException {
+        FetchOptions options = new FetchOptions(
+                properties.timeoutMillis(),
+                FETCH_USER_AGENT,
+                proxyAddress()
+        );
+        IOException lastException = null;
+        for (int attempt = 1; attempt <= properties.retries(); attempt++) {
+            try {
+                return documentFetcher.fetch(url, options);
+            } catch (IOException e) {
+                lastException = e;
+            }
+        }
+        throw new IOException("Failed to fetch " + url + " after " + properties.retries() + " attempts: "
+                + lastException.getMessage(), lastException);
+    }
+
+    private Optional<InetSocketAddress> proxyAddress() {
+        if (properties.proxyHost() == null || properties.proxyPort() == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new InetSocketAddress(properties.proxyHost(), properties.proxyPort()));
     }
 
     public List<TrendingRow> parseTrendingHtml(String html, GitHubTrendingEntry.Period period) {

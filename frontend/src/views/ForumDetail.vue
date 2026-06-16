@@ -32,9 +32,6 @@
                 <div class="forum-article__tags">
                   <span v-if="post.categoryName" class="tag-chip tag-chip--sm tag-chip--muted">{{ post.categoryName }}</span>
                   <span v-for="t in post.tags || []" :key="t.id" class="tag-chip tag-chip--sm">{{ t.name }}</span>
-                  <span v-if="post.relatedTitle" class="tag-chip tag-chip--sm tag-chip--asset">
-                    {{ relatedLabel(post.relatedType) }} · {{ post.relatedTitle }}
-                  </span>
                 </div>
                 <div class="forum-article__actions">
                   <el-button size="small" :type="post.likedByMe ? 'primary' : 'default'" plain @click="toggleLike">
@@ -154,17 +151,6 @@
           <aside class="forum-detail-side">
             <section class="forum-panel">
               <div class="forum-panel__header">
-                <h3>关联内容</h3>
-              </div>
-              <div v-if="post.relatedTitle" class="forum-related">
-                <span class="forum-related__type">{{ relatedLabel(post.relatedType) }}</span>
-                <div class="forum-related__title">{{ post.relatedTitle }}</div>
-              </div>
-              <p v-else class="forum-empty-copy">暂未关联 Skill / Rule / 知识库 / AI 工具。</p>
-            </section>
-
-            <section class="forum-panel">
-              <div class="forum-panel__header">
                 <h3>帖子信息</h3>
               </div>
               <dl class="forum-info-list">
@@ -193,7 +179,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import PageHero from '../components/PageHero.vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
-import { formatForumRelativeTime, formatForumTime, renderForumMarkdown, forumPostTypeLabels, forumRelatedTypeLabels } from '../utils/forum'
+import { formatForumRelativeTime, formatForumTime, renderForumMarkdown, forumPostTypeLabels } from '../utils/forum'
 
 const route = useRoute()
 const router = useRouter()
@@ -241,10 +227,6 @@ function ensureLogin() {
 
 function postTypeLabel(value) {
   return forumPostTypeLabels[value] || value || '帖子'
-}
-
-function relatedLabel(value) {
-  return forumRelatedTypeLabels[value] || '关联'
 }
 
 async function toggleLike() {
@@ -612,26 +594,6 @@ function scrollToReplyForm() {
   display: grid;
   gap: 1rem;
   align-self: start;
-}
-
-.forum-related {
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(14, 116, 144, 0.08), rgba(20, 184, 166, 0.12));
-  padding: 0.9rem 1rem;
-}
-
-.forum-related__type {
-  display: inline-block;
-  color: #0f766e;
-  font-size: 0.78rem;
-  font-weight: 800;
-  margin-bottom: 0.35rem;
-}
-
-.forum-related__title {
-  color: #0f172a;
-  font-weight: 700;
-  line-height: 1.5;
 }
 
 .forum-info-list {

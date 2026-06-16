@@ -16,13 +16,6 @@ export const forumStatusLabels = {
   DELETED: '删除',
 }
 
-export const forumRelatedTypeLabels = {
-  SKILL: 'Skill',
-  RULE: 'Rule',
-  ARTICLE: 'AI知识库',
-  AI_TOOL: 'AI 工具',
-}
-
 export function renderForumMarkdown(raw) {
   const value = raw || ''
   if (!value.trim()) return ''

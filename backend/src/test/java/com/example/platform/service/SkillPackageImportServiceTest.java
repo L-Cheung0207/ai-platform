@@ -182,7 +182,7 @@ class SkillPackageImportServiceTest {
     }
 
     @Test
-    void importPackageStoresPackageFilesButDefersGitLabPublishUntilReviewPasses() throws Exception {
+    void importPackageStoresPackageFilesAndPublishesToGitLabImmediately() throws Exception {
         MockMultipartFile file = zipFile("sample-skill.zip", packageEntries(true, false));
         AtomicReference<Skill> savedSkill = new AtomicReference<>();
         gitLabSkillPublishService.enabled = true;
@@ -212,12 +212,15 @@ class SkillPackageImportServiceTest {
 
         assertThat(result.skill().getId()).isEqualTo(43L);
         assertThat(result.packageValidation().passed()).isTrue();
-        assertThat(result.gitLabPublication().status()).isEqualTo("DISABLED");
-        assertThat(result.gitLabPublication().message()).contains("评审通过后");
-        assertThat(gitLabSkillPublishService.publishCalls).isZero();
-        assertThat(savedSkill.get().getSourceRepositoryUrl()).isNull();
-        assertThat(savedSkill.get().getCloneCommand()).isEqualTo("git clone <待评审后生成的仓库地址>");
-        assertThat(savedSkill.get().getReviewNotes()).doesNotContain("GitLab MR");
+        assertThat(result.gitLabPublication().status()).isEqualTo("PUBLISHED");
+        assertThat(result.gitLabPublication().mergeRequestUrl()).isEqualTo("https://git.example.com/platform/ai-skills/-/merge_requests/7");
+        assertThat(gitLabSkillPublishService.publishCalls).isEqualTo(1);
+        assertThat(gitLabSkillPublishService.publishedSkillDirectory).isEqualTo("sample-skill");
+        assertThat(gitLabSkillPublishService.publishedSkillName).isEqualTo("Sample Skill");
+        assertThat(gitLabSkillPublishService.publishedFiles).containsKeys("SKILL.md", "agents/openai.yaml", "references/checklist.md");
+        assertThat(savedSkill.get().getSourceRepositoryUrl()).isEqualTo("https://git.example.com/platform/ai-skills");
+        assertThat(savedSkill.get().getCloneCommand()).isEqualTo("git clone https://git.example.com/platform/ai-skills.git");
+        assertThat(savedSkill.get().getReviewNotes()).contains("GitLab MR：https://git.example.com/platform/ai-skills/-/merge_requests/7");
         assertThat(savedSkill.get().getSkillPackageFiles()).contains("references/checklist.md");
     }
 
@@ -298,6 +301,9 @@ class SkillPackageImportServiceTest {
         private boolean enabled;
         private SkillGitLabPublishResultDto result = SkillGitLabPublishResultDto.disabled("GitLab 自动发布未启用");
         private int publishCalls;
+        private String publishedSkillDirectory;
+        private String publishedSkillName;
+        private Map<String, byte[]> publishedFiles;
 
         private StubGitLabSkillPublishService() {
             super(new ObjectMapper(), false, "", "", "", "", "main", "skills", "skill");
@@ -311,6 +317,9 @@ class SkillPackageImportServiceTest {
         @Override
         public SkillGitLabPublishResultDto publishPackage(String skillDirectory, String skillName, Map<String, byte[]> files) {
             publishCalls++;
+            publishedSkillDirectory = skillDirectory;
+            publishedSkillName = skillName;
+            publishedFiles = files;
             return result;
         }
     }

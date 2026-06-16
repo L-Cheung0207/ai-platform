@@ -23,9 +23,6 @@ public class ForumPostWriteRequest {
     private Long categoryId;
 
     private List<Long> tagIds = new ArrayList<>();
-    private String relatedType;
-    private Long relatedId;
-    private String relatedTitle;
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
@@ -37,10 +34,4 @@ public class ForumPostWriteRequest {
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
     public List<Long> getTagIds() { return tagIds; }
     public void setTagIds(List<Long> tagIds) { this.tagIds = tagIds != null ? tagIds : new ArrayList<>(); }
-    public String getRelatedType() { return relatedType; }
-    public void setRelatedType(String relatedType) { this.relatedType = relatedType; }
-    public Long getRelatedId() { return relatedId; }
-    public void setRelatedId(Long relatedId) { this.relatedId = relatedId; }
-    public String getRelatedTitle() { return relatedTitle; }
-    public void setRelatedTitle(String relatedTitle) { this.relatedTitle = relatedTitle; }
 }

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "test": "node --test src/components/skills/reviewForm.test.js",
+    "test": "node --test src/components/skills/reviewForm.test.js src/components/skills/contributorSkillWorkspace.test.js src/views/admin/skillManage.test.js src/views/homeGithubTrending.test.js",
     "build": "vite build",
     "preview": "vite preview"
   },

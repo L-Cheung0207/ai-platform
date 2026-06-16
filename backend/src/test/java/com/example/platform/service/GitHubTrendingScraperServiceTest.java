@@ -5,6 +5,7 @@ import org.jsoup.Jsoup;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,7 +38,10 @@ class GitHubTrendingScraperServiceTest {
                   </article>
                 </body></html>
                 """);
-        GitHubTrendingScraperService scraper = new GitHubTrendingScraperService(fetcher);
+        GitHubTrendingScraperService scraper = new GitHubTrendingScraperService(
+                fetcher,
+                new GitHubTrendingScraperProperties(30_000, 2, "127.0.0.1", 7890)
+        );
 
         List<GitHubTrendingScraperService.TrendingRow> rows = scraper.fetch(
                 GitHubTrendingEntry.Period.MONTHLY,
@@ -45,11 +49,36 @@ class GitHubTrendingScraperServiceTest {
         );
 
         assertThat(fetcher.url).isEqualTo("https://github.com/trending/c%2B%2B?since=monthly");
-        assertThat(fetcher.timeoutMillis).isEqualTo(10_000);
-        assertThat(fetcher.userAgent).isEqualTo("ai-guide-style-website/1.0 (+https://github.com/trending)");
+        assertThat(fetcher.options.timeoutMillis()).isEqualTo(30_000);
+        assertThat(fetcher.options.userAgent()).isEqualTo("ai-guide-style-website/1.0 (+https://github.com/trending)");
+        assertThat(fetcher.options.proxyAddress()).contains(new InetSocketAddress("127.0.0.1", 7890));
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).period()).isEqualTo(GitHubTrendingEntry.Period.MONTHLY);
         assertThat(rows.get(0).repoFullName()).isEqualTo("openai/codex");
+    }
+
+    @Test
+    void fetchRetriesTransientIoFailureBeforeParsingRows() throws IOException {
+        FlakyFetcher fetcher = new FlakyFetcher("""
+                <html><body>
+                  <article class="Box-row">
+                    <h2><a href="/openai/codex"> openai / codex </a></h2>
+                  </article>
+                </body></html>
+                """);
+        GitHubTrendingScraperService scraper = new GitHubTrendingScraperService(
+                fetcher,
+                new GitHubTrendingScraperProperties(30_000, 2, null, null)
+        );
+
+        List<GitHubTrendingScraperService.TrendingRow> rows = scraper.fetch(
+                GitHubTrendingEntry.Period.WEEKLY,
+                null
+        );
+
+        assertThat(fetcher.calls).isEqualTo(2);
+        assertThat(rows).extracting(GitHubTrendingScraperService.TrendingRow::repoFullName)
+                .containsExactly("openai/codex");
     }
 
     @Test
@@ -109,18 +138,34 @@ class GitHubTrendingScraperServiceTest {
     private static class CapturingFetcher implements GitHubTrendingScraperService.DocumentFetcher {
         private final String html;
         private String url;
-        private int timeoutMillis;
-        private String userAgent;
+        private GitHubTrendingScraperService.FetchOptions options;
 
         private CapturingFetcher(String html) {
             this.html = html;
         }
 
         @Override
-        public org.jsoup.nodes.Document fetch(String url, int timeoutMillis, String userAgent) {
+        public org.jsoup.nodes.Document fetch(String url, GitHubTrendingScraperService.FetchOptions options) {
             this.url = url;
-            this.timeoutMillis = timeoutMillis;
-            this.userAgent = userAgent;
+            this.options = options;
+            return Jsoup.parse(html, url);
+        }
+    }
+
+    private static class FlakyFetcher implements GitHubTrendingScraperService.DocumentFetcher {
+        private final String html;
+        private int calls;
+
+        private FlakyFetcher(String html) {
+            this.html = html;
+        }
+
+        @Override
+        public org.jsoup.nodes.Document fetch(String url, GitHubTrendingScraperService.FetchOptions options) throws IOException {
+            calls++;
+            if (calls == 1) {
+                throw new IOException("Connect timed out");
+            }
             return Jsoup.parse(html, url);
         }
     }

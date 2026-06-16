@@ -34,9 +34,8 @@ public class HomeService {
     @Transactional(readOnly = true)
     public HomeDto getHome() {
         HomeDto dto = new HomeDto();
-        List<Skill> skills = skillRepository.findTop10ByVisibilityAndLifecycleStatusOrderByUpdatedAtDesc(
-                Skill.Visibility.VISIBLE,
-                Skill.LifecycleStatus.APPROVED
+        List<Skill> skills = skillRepository.findTop10ByVisibilityOrderByUpdatedAtDesc(
+                Skill.Visibility.VISIBLE
         );
         dto.setLatestSkills(skills.stream().map(SkillDto::fromEntity).collect(Collectors.toList()));
         List<LearningArticle> articles = articleRepository.findTop5ByStatusOrderByUpdatedAtDesc(LearningArticle.Status.PUBLISHED);

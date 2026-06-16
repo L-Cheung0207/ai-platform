@@ -55,7 +55,7 @@
                   <span class="home-section-icon">
                     <Icons name="link" :size="20" />
                   </span>
-                  GitHub Trending
+                  GitHub热度排行榜
                 </h2>
                 <p class="home-trending-time">{{ formattedGithubTrendingUpdatedAt }}</p>
               </div>
@@ -97,8 +97,9 @@
                 </span>
                 <span class="home-trending-copy">
                   <span class="home-trending-repo">{{ repo.repoFullName }}</span>
-                  <span v-if="repo.effectCn" class="home-trending-effect">{{ repo.effectCn }}</span>
-                  <span v-if="repo.scenarioCn" class="home-trending-scenario">{{ repo.scenarioCn }}</span>
+                  <span class="home-trending-desc">
+                    {{ githubTrendingSummary(repo) }}
+                  </span>
                 </span>
               </a>
             </div>
@@ -149,32 +150,6 @@
         </div>
 
         <aside v-if="latestNews?.length || latestLlmLeaderboard?.length" class="home-sidebar">
-          <section v-if="latestLlmLeaderboard?.length" class="home-section home-section--leaderboard home-section-news home-section-anim">
-            <div class="home-section-header">
-              <div>
-                <p class="home-section-kicker">Leaderboard</p>
-                <h2 class="home-section-title">
-                  <span class="home-section-icon">
-                    <Icons name="sparkle" :size="20" />
-                  </span>
-                  最新编程模型排行榜
-                </h2>
-              </div>
-              <router-link to="/llm-leaderboard" class="home-more">更多</router-link>
-            </div>
-            <ul class="home-news-list">
-              <li v-for="(m, i) in latestLlmLeaderboard" :key="m.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
-                <router-link to="/llm-leaderboard" class="home-news-link">
-                  <span class="home-news-num" :class="i < 3 ? 'home-news-num-hot' : 'home-news-num-normal'">{{ i + 1 }}</span>
-                  <span class="home-news-copy">
-                    <span class="home-news-title">{{ m.rankBadge }}{{ m.modelName }}</span>
-                    <span v-if="m.organization || m.provider" class="home-news-meta">{{ m.organization || m.provider }}</span>
-                  </span>
-                </router-link>
-              </li>
-            </ul>
-          </section>
-
           <section v-if="latestNews?.length" class="home-section home-section--news home-section-news home-section-anim">
             <div class="home-section-header">
               <div>
@@ -200,6 +175,32 @@
               </li>
             </ul>
           </section>
+
+          <section v-if="latestLlmLeaderboard?.length" class="home-section home-section--leaderboard home-section-news home-section-anim">
+            <div class="home-section-header">
+              <div>
+                <p class="home-section-kicker">Leaderboard</p>
+                <h2 class="home-section-title">
+                  <span class="home-section-icon">
+                    <Icons name="sparkle" :size="20" />
+                  </span>
+                  最新编程模型排行榜
+                </h2>
+              </div>
+              <router-link to="/llm-leaderboard" class="home-more">更多</router-link>
+            </div>
+            <ul class="home-news-list">
+              <li v-for="(m, i) in latestLlmLeaderboard" :key="m.id" class="home-news-item" :style="{ animationDelay: `${i * 35}ms` }">
+                <router-link to="/llm-leaderboard" class="home-news-link">
+                  <span class="home-news-num" :class="i < 3 ? 'home-news-num-hot' : 'home-news-num-normal'">{{ i + 1 }}</span>
+                  <span class="home-news-copy">
+                    <span class="home-news-title">{{ m.rankBadge }}{{ m.modelName }}</span>
+                    <span v-if="m.organization || m.provider" class="home-news-meta">{{ m.organization || m.provider }}</span>
+                  </span>
+                </router-link>
+              </li>
+            </ul>
+          </section>
         </aside>
       </div>
 
@@ -213,6 +214,7 @@
 import { computed, ref, onMounted } from 'vue'
 import Icons from '../components/Icons.vue'
 import api from '../services/api'
+import { githubTrendingSummary } from './homeGithubTrending'
 
 const latestSkills = ref([])
 const latestArticles = ref([])
@@ -447,9 +449,20 @@ function lifecycleLabel(value) {
 }
 
 .home-section--github {
-  --home-section-accent: #24292f;
-  --home-section-soft: rgba(36, 41, 47, 0.09);
-  --home-section-text: #24292f;
+  --home-section-accent: #059669;
+  --home-section-soft: rgba(5, 150, 105, 0.12);
+  --home-section-text: #047857;
+  --github-trending-border: rgba(5, 150, 105, 0.16);
+  --github-trending-border-hover: rgba(5, 150, 105, 0.32);
+  --github-trending-shadow: rgba(4, 120, 87, 0.12);
+  --github-trending-card-bg-start: rgba(236, 253, 245, 0.96);
+  --github-trending-rank-hot-start: #34d399;
+  --github-trending-rank-hot-end: #059669;
+  --github-trending-rank-hot-shadow: rgba(5, 150, 105, 0.24);
+  --github-trending-rank-normal-bg: #ecfdf5;
+  --github-trending-rank-normal-text: #047857;
+  --github-trending-tab-bg: rgba(236, 253, 245, 0.72);
+  --github-trending-tab-shadow: rgba(5, 150, 105, 0.14);
 }
 
 .home-section--news {
@@ -802,14 +815,15 @@ function lifecycleLabel(value) {
 
 .home-trending-time {
   margin: 0.35rem 0 0;
-  color: #94a3b8;
+  color: var(--home-section-text, #047857);
   font-size: 0.74rem;
   line-height: 1.35;
+  opacity: 0.82;
 }
 
 .home-trending-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.9rem;
 }
 
@@ -817,21 +831,24 @@ function lifecycleLabel(value) {
   display: flex;
   align-items: flex-start;
   gap: 0.82rem;
-  min-height: 9rem;
   padding: 1rem;
-  border: 1px solid rgba(203, 213, 225, 0.84);
+  border: 1px solid var(--github-trending-border, rgba(5, 150, 105, 0.16));
   border-radius: 10px;
   color: inherit;
   text-decoration: none;
   background:
-    linear-gradient(180deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.98));
+    linear-gradient(
+      180deg,
+      var(--github-trending-card-bg-start, rgba(236, 253, 245, 0.96)),
+      rgba(255, 255, 255, 0.98)
+    );
   animation: home-fade-up 0.4s ease-out both;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .home-trending-card:hover {
-  border-color: rgba(36, 41, 47, 0.24);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+  border-color: var(--github-trending-border-hover, rgba(5, 150, 105, 0.32));
+  box-shadow: 0 16px 30px var(--github-trending-shadow, rgba(4, 120, 87, 0.12));
   transform: translateY(-2px);
 }
 
@@ -849,13 +866,17 @@ function lifecycleLabel(value) {
 
 .home-trending-rank--hot {
   color: #ffffff;
-  background: #24292f;
-  box-shadow: 0 8px 18px rgba(36, 41, 47, 0.18);
+  background: linear-gradient(
+    135deg,
+    var(--github-trending-rank-hot-start, #34d399),
+    var(--github-trending-rank-hot-end, #059669)
+  );
+  box-shadow: 0 8px 18px var(--github-trending-rank-hot-shadow, rgba(5, 150, 105, 0.24));
 }
 
 .home-trending-rank--normal {
-  color: #475569;
-  background: #eef2f7;
+  color: var(--github-trending-rank-normal-text, #047857);
+  background: var(--github-trending-rank-normal-bg, #ecfdf5);
 }
 
 .home-trending-copy {
@@ -872,12 +893,12 @@ function lifecycleLabel(value) {
   overflow-wrap: anywhere;
 }
 
-.home-trending-effect {
+.home-trending-desc {
   color: #334155;
-  font-size: 0.84rem;
-  line-height: 1.55;
+  font-size: 0.85rem;
+  line-height: 1.65;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -887,9 +908,9 @@ function lifecycleLabel(value) {
   display: inline-flex;
   gap: 0.25rem;
   padding: 0.18rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--github-trending-border, rgba(5, 150, 105, 0.16));
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--github-trending-tab-bg, rgba(236, 253, 245, 0.72));
 }
 
 .home-trending-tab {
@@ -910,19 +931,9 @@ function lifecycleLabel(value) {
 
 .home-trending-tab:hover,
 .home-trending-tab--active {
-  color: #0f172a;
+  color: var(--home-section-text, #047857);
   background: #fff;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
-}
-
-.home-trending-scenario {
-  color: #64748b;
-  font-size: 0.78rem;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  box-shadow: 0 4px 12px var(--github-trending-tab-shadow, rgba(5, 150, 105, 0.14));
 }
 
 @media (max-width: 420px) {
@@ -937,16 +948,6 @@ function lifecycleLabel(value) {
 
   .home-trending-tab {
     flex: 1;
-  }
-}
-
-@media (max-width: 639px) {
-  .home-trending-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .home-trending-card {
-    min-height: auto;
   }
 }
 

@@ -26,6 +26,11 @@ app:
     dir: ${UPLOAD_DIR:./upload}
     base-url: /uploads
   scraper:
+    github-trending:
+      timeout-millis: ${GITHUB_TRENDING_TIMEOUT_MILLIS:30000}
+      retries: ${GITHUB_TRENDING_RETRIES:2}
+      proxy-host: ${GITHUB_TRENDING_PROXY_HOST:}
+      proxy-port: ${GITHUB_TRENDING_PROXY_PORT:0}
     ai-tools:
       enabled: ${SCRAPER_AI_TOOLS_ENABLED:true}
       headless: ${SCRAPER_AI_TOOLS_HEADLESS:true}

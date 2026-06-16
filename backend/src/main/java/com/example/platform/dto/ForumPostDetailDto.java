@@ -28,9 +28,6 @@ public class ForumPostDetailDto extends ForumPostListItemDto {
         dto.setReplyCount(base.getReplyCount());
         dto.setFavoriteCount(base.getFavoriteCount());
         dto.setAccepted(base.getAccepted());
-        dto.setRelatedType(base.getRelatedType());
-        dto.setRelatedId(base.getRelatedId());
-        dto.setRelatedTitle(base.getRelatedTitle());
         dto.setLastReplyAt(base.getLastReplyAt());
         dto.setLastActivityAt(base.getLastActivityAt());
         dto.setCreatedAt(base.getCreatedAt());

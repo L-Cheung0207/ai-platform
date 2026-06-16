@@ -64,6 +64,9 @@ router.beforeEach((to, from, next) => {
     next({ name: 'Login', query: { redirect: to.fullPath } })
     return
   }
+  if (to.meta.requiresAuth) {
+    setAuthToken(auth.token)
+  }
   if (to.meta.requiresAdmin) {
     if (!auth.isAuthenticated) {
       next({ name: 'Login', query: { redirect: to.fullPath } })

@@ -32,7 +32,7 @@ public record SkillGitLabPublishResultDto(
                                                         String commitId) {
         return new SkillGitLabPublishResultDto(
                 "PUBLISHED",
-                "已发布到 GitLab，并创建待审核 Merge Request",
+                "已上传到 GitLab，并创建 Merge Request",
                 repositoryUrl,
                 branchName,
                 targetBranch,

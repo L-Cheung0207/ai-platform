@@ -17,7 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -157,7 +159,7 @@ public class GitHubTrendingService {
     }
 
     private GitHubTrendingStatusDto runSyncAfterStarted(GitHubTrendingConfig config) {
-        Instant batch = Instant.now();
+        Instant batch = currentDatabaseTimestamp();
         try {
             syncPeriodFetchedRows(
                     GitHubTrendingEntry.Period.WEEKLY,
@@ -239,6 +241,10 @@ public class GitHubTrendingService {
         entry.setRank(row.rank());
         entry.setRepoFullName(row.repoFullName());
         entry.setRepoUrl(row.repoUrl());
+        String currentDescription = entry.getDescription();
+        if (!Objects.equals(currentDescription, row.description())) {
+            entry.setDescriptionCn(null);
+        }
         entry.setDescription(row.description());
         entry.setLanguage(row.language());
         entry.setStars(row.stars());
@@ -315,5 +321,9 @@ public class GitHubTrendingService {
             return null;
         }
         return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+
+    private Instant currentDatabaseTimestamp() {
+        return Instant.now().truncatedTo(ChronoUnit.SECONDS);
     }
 }

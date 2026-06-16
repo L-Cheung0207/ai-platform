@@ -4,7 +4,7 @@
       <div class="global-search forum-hero-search">
         <el-input
           v-model="keyword"
-          placeholder="搜索帖子、正文、关联内容"
+          placeholder="搜索帖子、正文"
           clearable
           size="large"
           @keyup.enter="search"
@@ -86,9 +86,6 @@
                 <div class="forum-card__tags">
                   <span v-for="t in (post.tags || []).slice(0, 5)" :key="t.id" class="tag-chip tag-chip--sm forum-tag">
                     {{ t.name }}
-                  </span>
-                  <span v-if="post.relatedTitle" class="tag-chip tag-chip--sm tag-chip--muted">
-                    {{ relatedLabel(post.relatedType) }} · {{ post.relatedTitle }}
                   </span>
                 </div>
                 <div class="forum-card__stats">
@@ -193,7 +190,7 @@ import { useRoute, useRouter } from 'vue-router'
 import PageHero from '../components/PageHero.vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
-import { formatForumRelativeTime, forumExcerpt, forumPostTypeLabels, forumRelatedTypeLabels } from '../utils/forum'
+import { formatForumRelativeTime, forumExcerpt, forumPostTypeLabels } from '../utils/forum'
 
 const route = useRoute()
 const router = useRouter()
@@ -345,10 +342,6 @@ function goCreate() {
 
 function postTypeLabel(value) {
   return forumPostTypeLabels[value] || value || '帖子'
-}
-
-function relatedLabel(value) {
-  return forumRelatedTypeLabels[value] || '关联'
 }
 
 onMounted(async () => {
