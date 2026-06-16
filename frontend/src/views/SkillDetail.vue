@@ -174,22 +174,6 @@
                   <dt>版本</dt>
                   <dd><span class="meta-version">{{ skill.version || '1.0.0' }}</span></dd>
                 </div>
-                <div class="meta-list__item">
-                  <dt>分类/优先级</dt>
-                  <dd>{{ skillCategoryLabel(skill.skillCategory) }} / {{ buildPriorityLabel(skill.buildPriority) }}</dd>
-                </div>
-                <div class="meta-list__item">
-                  <dt>下次复审</dt>
-                  <dd>{{ skill.nextReviewAt || '未设置' }}</dd>
-                </div>
-                <div class="meta-list__item">
-                  <dt>模板校验</dt>
-                  <dd>
-                    <span class="meta-badge" :class="validationBadgeClass(skill.templateValidationStatus)">
-                      {{ validationStatusLabel(skill.templateValidationStatus) }}
-                    </span>
-                  </dd>
-                </div>
                 <div class="meta-list__item meta-list__item--highlight">
                   <dt>使用次数</dt>
                   <dd><span class="meta-usage">{{ usageCount }}</span></dd>
@@ -378,12 +362,6 @@ function buildPriorityLabel(value) {
 
 function validationStatusLabel(value) {
   return optionLabel(validationOptions, value, '未校验')
-}
-
-function validationBadgeClass(value) {
-  if (value === 'PASSED') return 'meta-badge--passed'
-  if (value === 'FAILED') return 'meta-badge--failed'
-  return 'meta-badge--pending'
 }
 
 onMounted(async () => {
@@ -845,7 +823,7 @@ onMounted(async () => {
   border-bottom: 1px solid #f1f5f9;
 }
 
-.meta-list__item:last-child {
+.meta-list__item:last-child:not(.meta-list__item--highlight) {
   border-bottom: none;
   padding-bottom: 0;
 }
@@ -871,6 +849,7 @@ onMounted(async () => {
 .meta-list__item--highlight {
   margin-top: 4px;
   padding: 12px;
+  align-items: center;
   background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
   border-radius: 10px;
   border-bottom: none;

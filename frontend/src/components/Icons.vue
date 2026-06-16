@@ -41,6 +41,9 @@
     <template v-else-if="name === 'sparkle'">
       <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z" />
     </template>
+    <template v-else-if="name === 'star'">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </template>
   </svg>
 </template>
 
@@ -52,7 +55,7 @@ const props = defineProps({
   size: { type: [String, Number], default: 24 },
 })
 
-const icon = computed(() => ['logo', 'box', 'document', 'link', 'book', 'sparkle'].includes(props.name))
+const icon = computed(() => ['logo', 'box', 'document', 'link', 'book', 'sparkle', 'star'].includes(props.name))
 
 const sizeStyle = computed(() => {
   const s = typeof props.size === 'number' ? props.size : parseInt(props.size, 10) || 24

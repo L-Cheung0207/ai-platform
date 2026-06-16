@@ -41,6 +41,7 @@ const routes = [
       { path: 'llm-leaderboard', name: 'AdminLlmLeaderboard', component: () => import('../views/admin/LlmLeaderboardManage.vue'), meta: { title: 'LLM 排行榜' } },
       { path: 'forum', name: 'AdminForum', component: () => import('../views/admin/ForumManage.vue'), meta: { title: '论坛管理' } },
       { path: 'forum/categories', name: 'AdminForumCategories', component: () => import('../views/admin/ForumCategoryManage.vue'), meta: { title: '论坛分类管理' } },
+      { path: 'modules', name: 'AdminModules', component: () => import('../views/admin/HomeNavModuleManage.vue'), meta: { title: '模块管理' } },
     ],
   },
 ]
@@ -60,14 +61,17 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+  const requiresAdmin = to.matched.some((record) => record.meta.requiresAdmin)
+
+  if (requiresAuth && !auth.isAuthenticated) {
     next({ name: 'Login', query: { redirect: to.fullPath } })
     return
   }
-  if (to.meta.requiresAuth) {
+  if (requiresAuth) {
     setAuthToken(auth.token)
   }
-  if (to.meta.requiresAdmin) {
+  if (requiresAdmin) {
     if (!auth.isAuthenticated) {
       next({ name: 'Login', query: { redirect: to.fullPath } })
       return

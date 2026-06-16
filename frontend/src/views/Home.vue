@@ -10,7 +10,7 @@
     <main class="home-main max-w-[1400px] mx-auto px-6 py-10">
       <div class="home-layout">
         <div class="home-main-col">
-          <section v-if="latestSkills?.length" class="home-section home-section--skills home-section-anim">
+          <section v-if="isModuleVisible('SKILLS') && latestSkills?.length" class="home-section home-section--skills home-section-anim">
             <div class="home-section-header">
               <div>
                 <p class="home-section-kicker">Asset Library</p>
@@ -47,7 +47,7 @@
             </div>
           </section>
 
-          <section v-if="hasGithubTrending" class="home-section home-section--github home-section-anim">
+          <section v-if="isModuleVisible('GITHUB_TRENDING') && hasGithubTrending" class="home-section home-section--github home-section-anim">
             <div class="home-section-header home-trending-header">
               <div>
                 <p class="home-section-kicker">Open Source</p>
@@ -96,7 +96,18 @@
                   {{ repo.rank }}
                 </span>
                 <span class="home-trending-copy">
-                  <span class="home-trending-repo">{{ repo.repoFullName }}</span>
+                  <span class="home-trending-title-row">
+                    <span class="home-trending-repo">{{ repo.repoFullName }}</span>
+                    <span class="home-trending-stats">
+                      <span v-if="repo.stars != null" class="home-trending-stat">
+                        <Icons name="star" :size="13" />
+                        Stars {{ formatGithubStars(repo.stars) }}
+                      </span>
+                      <span v-if="repo.starsGained != null" class="home-trending-stat home-trending-stat--gain">
+                        新增 {{ formatGithubStars(repo.starsGained) }}
+                      </span>
+                    </span>
+                  </span>
                   <span class="home-trending-desc">
                     {{ githubTrendingSummary(repo) }}
                   </span>
@@ -105,7 +116,7 @@
             </div>
           </section>
 
-          <section class="home-section home-section--knowledge home-section-anim">
+          <section v-if="isModuleVisible('ARTICLES')" class="home-section home-section--knowledge home-section-anim">
             <div class="home-section-header">
               <div>
                 <p class="home-section-kicker">Knowledge</p>
@@ -126,7 +137,7 @@
             <p v-else-if="!loading" class="home-empty">暂无知识内容</p>
           </section>
 
-          <section class="home-section home-section--forum home-section-anim">
+          <section v-if="isModuleVisible('FORUM')" class="home-section home-section--forum home-section-anim">
             <div class="home-section-header">
               <div>
                 <p class="home-section-kicker">Forum</p>
@@ -149,8 +160,8 @@
           </section>
         </div>
 
-        <aside v-if="latestNews?.length || latestLlmLeaderboard?.length" class="home-sidebar">
-          <section v-if="latestNews?.length" class="home-section home-section--news home-section-news home-section-anim">
+        <aside v-if="showSidebar" class="home-sidebar">
+          <section v-if="isModuleVisible('NEWS') && latestNews?.length" class="home-section home-section--news home-section-news home-section-anim">
             <div class="home-section-header">
               <div>
                 <p class="home-section-kicker">News</p>
@@ -176,7 +187,7 @@
             </ul>
           </section>
 
-          <section v-if="latestLlmLeaderboard?.length" class="home-section home-section--leaderboard home-section-news home-section-anim">
+          <section v-if="isModuleVisible('LLM_LEADERBOARD') && latestLlmLeaderboard?.length" class="home-section home-section--leaderboard home-section-news home-section-anim">
             <div class="home-section-header">
               <div>
                 <p class="home-section-kicker">Leaderboard</p>
@@ -215,6 +226,9 @@ import { computed, ref, onMounted } from 'vue'
 import Icons from '../components/Icons.vue'
 import api from '../services/api'
 import { githubTrendingSummary } from './homeGithubTrending'
+import { useHomeNavModules } from '../composables/useHomeNavModules'
+
+const { navModules } = useHomeNavModules()
 
 const latestSkills = ref([])
 const latestArticles = ref([])
@@ -244,9 +258,21 @@ const formattedGithubTrendingUpdatedAt = computed(() => {
   return date.toLocaleString('zh-CN', { hour12: false })
 })
 
+const visibleModuleCodes = computed(() => new Set((navModules.value || []).map((item) => item.code)))
+
+const showSidebar = computed(() =>
+  (visibleModuleCodes.value.has('NEWS') && latestNews.value.length > 0)
+  || (visibleModuleCodes.value.has('LLM_LEADERBOARD') && latestLlmLeaderboard.value.length > 0)
+)
+
+function isModuleVisible(code) {
+  return visibleModuleCodes.value.has(code)
+}
+
 onMounted(async () => {
   try {
     const data = await api.get('/home')
+    navModules.value = data.navModules || []
     latestSkills.value = data.latestSkills || []
     latestArticles.value = data.latestArticles || []
     latestNews.value = (data.latestNews || []).slice(0, 10)
@@ -281,6 +307,12 @@ function lifecycleLabel(value) {
     ARCHIVED: '已归档',
   }
   return labels[value] || '候选'
+}
+
+function formatGithubStars(value) {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return value
+  return number.toLocaleString('zh-CN')
 }
 </script>
 
@@ -446,29 +478,30 @@ function lifecycleLabel(value) {
   --home-section-accent: #EBC050;
   --home-section-soft: rgba(235, 192, 80, 0.18);
   --home-section-text: #b58105;
+  --home-news-rank-hot-bg: rgba(235, 192, 80, 0.18);
+  --home-news-rank-hot-bg-hover: rgba(235, 192, 80, 0.28);
 }
 
 .home-section--github {
   --home-section-accent: #059669;
   --home-section-soft: rgba(5, 150, 105, 0.12);
   --home-section-text: #047857;
+  --home-news-rank-hot-bg: rgba(5, 150, 105, 0.14);
+  --home-news-rank-hot-bg-hover: rgba(5, 150, 105, 0.22);
   --github-trending-border: rgba(5, 150, 105, 0.16);
   --github-trending-border-hover: rgba(5, 150, 105, 0.32);
   --github-trending-shadow: rgba(4, 120, 87, 0.12);
   --github-trending-card-bg-start: rgba(236, 253, 245, 0.96);
-  --github-trending-rank-hot-start: #34d399;
-  --github-trending-rank-hot-end: #059669;
-  --github-trending-rank-hot-shadow: rgba(5, 150, 105, 0.24);
-  --github-trending-rank-normal-bg: #ecfdf5;
-  --github-trending-rank-normal-text: #047857;
   --github-trending-tab-bg: rgba(236, 253, 245, 0.72);
   --github-trending-tab-shadow: rgba(5, 150, 105, 0.14);
 }
 
 .home-section--news {
-  --home-section-accent: #EB8888;
-  --home-section-soft: rgba(235, 136, 136, 0.14);
-  --home-section-text: #d87070;
+  --home-section-accent: #0ea5e9;
+  --home-section-soft: rgba(14, 165, 233, 0.12);
+  --home-section-text: #0284c7;
+  --home-news-rank-hot-bg: rgba(14, 165, 233, 0.14);
+  --home-news-rank-hot-bg-hover: rgba(14, 165, 233, 0.22);
 }
 
 .home-section-anim:nth-child(1) { animation-delay: 0.05s; }
@@ -753,13 +786,13 @@ function lifecycleLabel(value) {
 }
 
 .home-news-link:hover .home-news-num-hot {
-  color: #d87070;
-  background: rgba(235, 136, 136, 0.25);
+  color: var(--home-section-text, #0284c7);
+  background: var(--home-news-rank-hot-bg-hover, rgba(14, 165, 233, 0.22));
 }
 
 .home-news-link:hover .home-news-num-normal {
-  color: #d4a830;
-  background: rgba(235, 192, 80, 0.25);
+  color: #475569;
+  background: rgba(148, 163, 184, 0.24);
 }
 
 .home-news-num {
@@ -775,13 +808,13 @@ function lifecycleLabel(value) {
 }
 
 .home-news-num-hot {
-  color: #EB8888;
-  background: rgba(235, 136, 136, 0.15);
+  color: var(--home-section-text, #0284c7);
+  background: var(--home-news-rank-hot-bg, rgba(14, 165, 233, 0.14));
 }
 
 .home-news-num-normal {
-  color: #EBC050;
-  background: rgba(235, 192, 80, 0.15);
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.16);
 }
 
 .home-news-copy {
@@ -862,30 +895,47 @@ function lifecycleLabel(value) {
   border-radius: 8px;
   font-size: 0.95rem;
   font-weight: 780;
+  transition: color 0.2s, background 0.2s;
 }
 
 .home-trending-rank--hot {
-  color: #ffffff;
-  background: linear-gradient(
-    135deg,
-    var(--github-trending-rank-hot-start, #34d399),
-    var(--github-trending-rank-hot-end, #059669)
-  );
-  box-shadow: 0 8px 18px var(--github-trending-rank-hot-shadow, rgba(5, 150, 105, 0.24));
+  color: var(--home-section-text, #047857);
+  background: var(--home-news-rank-hot-bg, rgba(5, 150, 105, 0.14));
 }
 
 .home-trending-rank--normal {
-  color: var(--github-trending-rank-normal-text, #047857);
-  background: var(--github-trending-rank-normal-bg, #ecfdf5);
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.home-trending-card:hover .home-trending-rank--hot {
+  color: var(--home-section-text, #047857);
+  background: var(--home-news-rank-hot-bg-hover, rgba(5, 150, 105, 0.22));
+}
+
+.home-trending-card:hover .home-trending-rank--normal {
+  color: #475569;
+  background: rgba(148, 163, 184, 0.24);
 }
 
 .home-trending-copy {
+  flex: 1;
   min-width: 0;
   display: grid;
   gap: 0.48rem;
 }
 
+.home-trending-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+  width: 100%;
+  min-width: 0;
+}
+
 .home-trending-repo {
+  min-width: 0;
   color: #0f172a;
   font-size: 0.98rem;
   font-weight: 720;
@@ -901,6 +951,40 @@ function lifecycleLabel(value) {
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.home-trending-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  max-width: 45%;
+}
+
+.home-trending-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-height: 1.45rem;
+  padding: 0.16rem 0.5rem;
+  border-radius: 6px;
+  color: #a16207;
+  background: rgba(254, 249, 195, 0.86);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  font-size: 0.74rem;
+  font-weight: 720;
+  line-height: 1;
+}
+
+.home-trending-stat svg {
+  stroke-width: 2.2;
+}
+
+.home-trending-stat--gain {
+  color: #2563eb;
+  background: rgba(239, 246, 255, 0.9);
+  border-color: rgba(59, 130, 246, 0.18);
 }
 
 .home-trending-tabs {
@@ -940,6 +1024,16 @@ function lifecycleLabel(value) {
   .home-trending-header {
     flex-direction: column;
     gap: 0.8rem;
+  }
+
+  .home-trending-title-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .home-trending-stats {
+    justify-content: flex-start;
+    max-width: 100%;
   }
 
   .home-trending-tabs {

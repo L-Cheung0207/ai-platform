@@ -46,27 +46,35 @@
 </template>
 
 <script setup>
-import { computed, shallowRef } from 'vue'
+import { computed, onMounted, shallowRef } from 'vue'
 import Icons from './Icons.vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import LoginDialog from './auth/LoginDialog.vue'
+import { useHomeNavModules } from '../composables/useHomeNavModules'
 
 const route = useRoute()
 const auth = useAuthStore()
 const loginDialogVisible = shallowRef(false)
+const { navModules, loadNavModules } = useHomeNavModules()
 const usesSkillsLoginDialog = computed(() => (
   route.path === '/skills' || route.path.startsWith('/skills/')
 ))
 
-const navLinks = [
-  { path: '/', label: '主页' },
-  { path: '/skills', label: 'Skill资产库', activePaths: ['/skills'] },
-  { path: '/articles', label: 'AI知识库' },
-  { path: '/forum', label: '论坛' },
-  { path: '/news', label: 'AI资讯' },
-  { path: '/llm-leaderboard', label: 'LLM 排行榜' },
-]
+onMounted(() => {
+  loadNavModules()
+})
+
+const navLinks = computed(() => {
+  const dynamicLinks = (navModules.value || [])
+    .filter((item) => item.navPath && item.navLabel)
+    .map((item) => ({
+      path: item.navPath,
+      label: item.navLabel,
+      activePaths: [item.navPath],
+    }))
+  return [{ path: '/', label: '主页' }, ...dynamicLinks]
+})
 
 function isActive(link) {
   const path = typeof link === 'string' ? link : link.path

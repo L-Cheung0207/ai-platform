@@ -14,6 +14,7 @@ public class HomeDto {
     private List<GitHubTrendingDto> githubTrendingWeekly;
     private List<GitHubTrendingDto> githubTrendingMonthly;
     private Instant githubTrendingUpdatedAt;
+    private List<HomeNavModuleDto> navModules;
 
     public List<SkillDto> getLatestSkills() { return latestSkills; }
     public void setLatestSkills(List<SkillDto> latestSkills) { this.latestSkills = latestSkills; }
@@ -29,4 +30,6 @@ public class HomeDto {
     public void setGithubTrendingMonthly(List<GitHubTrendingDto> githubTrendingMonthly) { this.githubTrendingMonthly = githubTrendingMonthly; }
     public Instant getGithubTrendingUpdatedAt() { return githubTrendingUpdatedAt; }
     public void setGithubTrendingUpdatedAt(Instant githubTrendingUpdatedAt) { this.githubTrendingUpdatedAt = githubTrendingUpdatedAt; }
+    public List<HomeNavModuleDto> getNavModules() { return navModules; }
+    public void setNavModules(List<HomeNavModuleDto> navModules) { this.navModules = navModules; }
 }

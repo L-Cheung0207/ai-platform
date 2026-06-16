@@ -128,9 +128,9 @@ async function toggleHidden(row) {
 
 async function remove(row) {
   try {
-    await ElMessageBox.confirm(`确定删除帖子「${row.title}」？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`确定永久删除帖子「${row.title}」？此操作不可恢复。`, '提示', { type: 'warning' })
     await api.delete(`/admin/forum/posts/${row.id}`)
-    ElMessage.success('已删除')
+    ElMessage.success('已永久删除')
     await load()
   } catch (e) {
     if (e !== 'cancel') ElMessage.error(e.message || '删除失败')

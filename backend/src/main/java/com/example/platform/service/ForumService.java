@@ -125,10 +125,12 @@ public class ForumService {
                 .orElseThrow(() -> new ResourceNotFoundException("帖子不存在"));
         if (!admin) {
             ensurePostEditable(post, userId);
+            post.setStatus(PostStatus.DELETED);
+            post.setDeletedAt(Instant.now());
+            postRepository.save(post);
+            return;
         }
-        post.setStatus(PostStatus.DELETED);
-        post.setDeletedAt(Instant.now());
-        postRepository.save(post);
+        purgePost(post);
     }
 
     @Transactional
@@ -445,6 +447,23 @@ public class ForumService {
             return -1;
         }
         return 0;
+    }
+
+    private void purgePost(ForumPost post) {
+        Long postId = post.getId();
+        List<Long> replyIds = replyRepository.findAllByPostId(postId).stream()
+                .map(ForumReply::getId)
+                .toList();
+        reactionRepository.deleteByTargetTypeAndTargetId(TargetType.POST, postId);
+        if (!replyIds.isEmpty()) {
+            reactionRepository.deleteByTargetTypeAndTargetIdIn(TargetType.REPLY, replyIds);
+        }
+        favoriteRepository.deleteByPostId(postId);
+        post.setAcceptedReply(null);
+        postRepository.saveAndFlush(post);
+        replyRepository.deleteByPostId(postId);
+        post.getTags().clear();
+        postRepository.delete(post);
     }
 
     private void bumpPostCounters(ForumPost post, boolean replyCreated) {

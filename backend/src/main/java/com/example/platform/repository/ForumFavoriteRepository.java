@@ -13,4 +13,6 @@ public interface ForumFavoriteRepository extends JpaRepository<ForumFavorite, Lo
     List<ForumFavorite> findByUserIdAndPostIdIn(Long userId, List<Long> postIds);
 
     List<ForumFavorite> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    void deleteByPostId(Long postId);
 }

@@ -174,6 +174,7 @@ const menuGroups = [
   {
     title: '系统',
     items: [
+      { path: '/admin/modules', label: '模块管理', icon: IconBarChart },
       { path: '/admin/users', label: '用户管理', icon: IconUsers },
     ],
   },

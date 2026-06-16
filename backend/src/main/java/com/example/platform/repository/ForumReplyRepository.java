@@ -21,4 +21,8 @@ public interface ForumReplyRepository extends JpaRepository<ForumReply, Long> {
     Optional<ForumReply> findWithGraphById(Long id);
 
     Optional<ForumReply> findByIdAndPostId(Long id, Long postId);
+
+    List<ForumReply> findAllByPostId(Long postId);
+
+    void deleteByPostId(Long postId);
 }

@@ -254,9 +254,11 @@ class ForumApiIntegrationTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/admin/forum/posts")
                         .header("Authorization", "Bearer " + adminToken)
-                        .param("status", "DELETED"))
+                        .param("keyword", "Moderation Topic B"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.items[0].id").value(post.getId().intValue()));
+                .andExpect(jsonPath("$.data.total").value(0));
+        mockMvc.perform(get("/api/forum/posts/" + post.getId()))
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(post("/api/admin/forum/categories")
                         .header("Authorization", "Bearer " + adminToken)

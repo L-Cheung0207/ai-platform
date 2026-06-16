@@ -12,6 +12,14 @@ test('requiresAuth routes refresh axios auth token before navigation continues',
   const normalized = routerSource.replace(/\s+/g, ' ')
   assert.match(
     normalized,
-    /if \(to\.meta\.requiresAuth && !auth\.isAuthenticated\).*?return.*?if \(to\.meta\.requiresAuth\).*?setAuthToken\(auth\.token\).*?next\(\)/,
+    /const requiresAuth = to\.matched\.some\(\(record\) => record\.meta\.requiresAuth\).*?if \(requiresAuth && !auth\.isAuthenticated\).*?return.*?if \(requiresAuth\).*?setAuthToken\(auth\.token\).*?next\(\)/,
+  )
+})
+
+test('admin child routes inherit requiresAdmin from matched parent records', () => {
+  const normalized = routerSource.replace(/\s+/g, ' ')
+  assert.match(
+    normalized,
+    /const requiresAdmin = to\.matched\.some\(\(record\) => record\.meta\.requiresAdmin\).*?if \(requiresAdmin\).*?setAuthToken\(auth\.token\)/,
   )
 })

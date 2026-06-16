@@ -17,4 +17,8 @@ public interface ForumReactionRepository extends JpaRepository<ForumReaction, Lo
             Long userId, TargetType targetType, List<Long> targetIds, ReactionType reactionType);
 
     long countByTargetTypeAndTargetIdAndReactionType(TargetType targetType, Long targetId, ReactionType reactionType);
+
+    void deleteByTargetTypeAndTargetId(TargetType targetType, Long targetId);
+
+    void deleteByTargetTypeAndTargetIdIn(TargetType targetType, Iterable<Long> targetIds);
 }
